@@ -1,7 +1,8 @@
-from fastapi import APIRouter, Depends, Body, Request
+from fastapi import APIRouter, Depends, Body, Request, HTTPException, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from src.database import get_db
+from src.middleware.auth import get_current_user
 from src.schemas import CalculationRequest, CalculationResponse, ServiceCostCalculation, EstimationCreate, EstimationResponse
 from src.services.pricing_service import PricingService
 from src.services.data_transfer_service import DataTransferService
@@ -25,12 +26,6 @@ DISCOUNT_MODELS = {
 }
 
 def calculate_reserved_cost(hourly_price: float, upfront_cost: float, quantity: int, hours_per_month: int, commitment_years: int) -> float:
-    """
-    Calcule le coût mensuel pour une instance reserved.
-    
-    Formula:
-    monthly_cost = (upfront_cost / (commitment_years * 12) / quantity) + (hourly_price * hours_per_month)
-    """
     if upfront_cost and upfront_cost > 0:
         monthly_upfront = (upfront_cost / (commitment_years * 12)) / quantity
         monthly_hourly = hourly_price * hours_per_month
@@ -43,7 +38,8 @@ def calculate_reserved_cost(hourly_price: float, upfront_cost: float, quantity: 
 async def calculate_estimation(
     request: Request,
     req: CalculationRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user_id: str = Depends(get_current_user)
 ):
     services_breakdown = []
     total_monthly = 0
@@ -142,13 +138,16 @@ async def calculate_estimation(
 async def save_estimation(
     request: Request,
     estimation: EstimationCreate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user_id: str = Depends(get_current_user)
 ):
+    if str(estimation.user_id) != user_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Unauthorized")
+    
     services_data = estimation.services
     
     db_estimation = Estimation(
-        user_id=estimation.user_id,
-        created_by=estimation.user_id,
+        user_id=user_id,
         provider=estimation.provider.value,
         name=estimation.name,
         status='saved',
@@ -176,7 +175,7 @@ async def save_estimation(
     db.commit()
     db.refresh(db_estimation)
     
-    log_estimation_created(str(db_estimation.id), estimation.user_id, estimation.provider.value)
+    log_estimation_created(str(db_estimation.id), user_id, estimation.provider.value)
     
     return db_estimation
 
@@ -185,9 +184,13 @@ async def save_estimation(
 async def get_estimation(
     request: Request,
     estimation_id: UUID,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user_id: str = Depends(get_current_user)
 ):
-    estimation = db.query(Estimation).filter(Estimation.id == estimation_id).first()
+    estimation = db.query(Estimation).filter(
+        Estimation.id == estimation_id,
+        Estimation.user_id == user_id
+    ).first()
     
     if not estimation:
         raise EstimationNotFoundError(str(estimation_id))
@@ -199,7 +202,8 @@ async def get_estimation(
 async def override_price(
     request: Request,
     data: dict = Body(...),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user_id: str = Depends(get_current_user)
 ):
     session_id = data.get('session_id')
     pricing_id = data.get('pricing_id')
@@ -224,9 +228,13 @@ async def override_price(
 async def export_estimation_csv(
     request: Request,
     estimation_id: UUID,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user_id: str = Depends(get_current_user)
 ):
-    estimation = db.query(Estimation).filter(Estimation.id == estimation_id).first()
+    estimation = db.query(Estimation).filter(
+        Estimation.id == estimation_id,
+        Estimation.user_id == user_id
+    ).first()
     
     if not estimation:
         raise EstimationNotFoundError(str(estimation_id))
@@ -256,7 +264,7 @@ async def export_estimation_csv(
     
     output.seek(0)
     
-    log_export_csv(str(estimation_id), estimation.user_id)
+    log_export_csv(str(estimation_id), user_id)
     
     return StreamingResponse(
         iter([output.getvalue()]),
