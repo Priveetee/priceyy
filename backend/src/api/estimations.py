@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Body
+from fastapi import APIRouter, Depends, Body, Request
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from src.database import get_db
@@ -6,6 +6,7 @@ from src.schemas import CalculationRequest, CalculationResponse, ServiceCostCalc
 from src.services.pricing_service import PricingService
 from src.models.estimation import Estimation, EstimationService, UserPriceOverride
 from src.exceptions import EstimationNotFoundError
+from src.rate_limit import limiter
 from typing import List
 from uuid import UUID
 import csv
@@ -21,23 +22,25 @@ DISCOUNT_MODELS = {
 }
 
 @router.post("/calculate", response_model=CalculationResponse)
+@limiter.limit("10/minute")
 async def calculate_estimation(
-    request: CalculationRequest,
+    request: Request,
+    req: CalculationRequest,
     db: Session = Depends(get_db)
 ):
     services_breakdown = []
     total_monthly = 0
     total_annual = 0
     
-    for service_config in request.services:
+    for service_config in req.services:
         hourly_price = await PricingService.get_price_with_validation(
             db=db,
-            provider=request.provider.value,
+            provider=req.provider.value,
             service_name=service_config.service,
             resource_type=service_config.resource_type,
             region=service_config.region,
             pricing_model=service_config.pricing_model.value,
-            session_id=request.session_id
+            session_id=req.session_id
         )
         
         discount = DISCOUNT_MODELS.get(service_config.pricing_model.value, 0.0)
@@ -72,7 +75,9 @@ async def calculate_estimation(
     )
 
 @router.post("/save", response_model=EstimationResponse)
+@limiter.limit("30/minute")
 async def save_estimation(
+    request: Request,
     estimation: EstimationCreate,
     db: Session = Depends(get_db)
 ):
@@ -109,7 +114,9 @@ async def save_estimation(
     return db_estimation
 
 @router.get("/{estimation_id}", response_model=EstimationResponse)
+@limiter.limit("50/minute")
 async def get_estimation(
+    request: Request,
     estimation_id: UUID,
     db: Session = Depends(get_db)
 ):
@@ -121,7 +128,9 @@ async def get_estimation(
     return estimation
 
 @router.post("/override-price")
+@limiter.limit("20/minute")
 async def override_price(
+    request: Request,
     data: dict = Body(...),
     db: Session = Depends(get_db)
 ):
@@ -142,7 +151,9 @@ async def override_price(
     return {"status": "ok", "message": f"Price overridden to €{custom_hourly_price}"}
 
 @router.get("/{estimation_id}/export-csv")
+@limiter.limit("30/minute")
 async def export_estimation_csv(
+    request: Request,
     estimation_id: UUID,
     db: Session = Depends(get_db)
 ):

@@ -8,6 +8,8 @@ from src.redis_client import init_redis, close_redis
 from src.scheduler import schedule_pricing_refresh, shutdown_scheduler
 from src.api import api_router
 from src.exceptions import PriceyException
+from src.rate_limit import limiter, rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -27,6 +29,9 @@ app = FastAPI(
     version="0.1.0",
     lifespan=lifespan
 )
+
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
 
 app.add_middleware(
     CORSMiddleware,
