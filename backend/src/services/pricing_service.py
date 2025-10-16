@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from sqlalchemy import and_
+from sqlalchemy import and_, func
 from src.models.pricing import Pricing, PricingHistory
 from src.schemas import PricingCreate, PricingResponse
 from src.redis_client import redis_client
@@ -73,7 +73,7 @@ class PricingService:
         
         if existing:
             existing.hourly_price = price.hourly_price
-            existing.last_updated = db.func.now()
+            existing.last_updated = func.now()
             db.commit()
             return existing
         
@@ -107,7 +107,7 @@ class PricingService:
             old_price = existing.hourly_price
             if abs(old_price - new_hourly_price) > 0.001:
                 existing.hourly_price = new_hourly_price
-                existing.last_updated = db.func.now()
+                existing.last_updated = func.now()
                 db.commit()
                 
                 history = PricingHistory(

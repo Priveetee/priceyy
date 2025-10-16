@@ -3,14 +3,17 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from src.database import init_db
 from src.redis_client import init_redis, close_redis
+from src.scheduler import schedule_pricing_refresh, shutdown_scheduler
 from src.api import api_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
     await init_redis()
+    schedule_pricing_refresh()
     yield
     await close_redis()
+    shutdown_scheduler()
 
 app = FastAPI(
     title="Priceyy",
