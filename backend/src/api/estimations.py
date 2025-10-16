@@ -1,14 +1,13 @@
-from fastapi import APIRouter, Depends, HTTPException, Body
+from fastapi import APIRouter, Depends, Body
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from src.database import get_db
 from src.schemas import CalculationRequest, CalculationResponse, ServiceCostCalculation, EstimationCreate, EstimationResponse
 from src.services.pricing_service import PricingService
 from src.models.estimation import Estimation, EstimationService, UserPriceOverride
-from src.models.pricing import Pricing
+from src.exceptions import EstimationNotFoundError
 from typing import List
 from uuid import UUID
-import uuid
 import csv
 from io import StringIO
 
@@ -31,45 +30,40 @@ async def calculate_estimation(
     total_annual = 0
     
     for service_config in request.services:
-        try:
-            hourly_price = await PricingService.get_price_with_validation(
-                db=db,
-                provider=request.provider,
-                service_name=service_config['service'],
-                resource_type=service_config['resource_type'],
-                region=service_config['region'],
-                pricing_model=service_config['pricing_model'],
-                session_id=request.session_id
-            )
-            
-            discount = DISCOUNT_MODELS.get(service_config['pricing_model'], 0.0)
-            final_hourly_price = hourly_price * (1 - discount)
-            
-            hours_per_month = service_config.get('hours_per_month', 730)
-            monthly_cost = (
-                service_config['quantity'] * 
-                final_hourly_price * 
-                hours_per_month
-            )
-            annual_cost = monthly_cost * 12
-            
-            services_breakdown.append(ServiceCostCalculation(
-                service=service_config['service'],
-                resource_type=service_config['resource_type'],
-                quantity=service_config['quantity'],
-                region=service_config['region'],
-                pricing_model=service_config['pricing_model'],
-                base_hourly_price=hourly_price,
-                final_hourly_price=final_hourly_price,
-                monthly_cost=round(monthly_cost, 2),
-                annual_cost=round(annual_cost, 2)
-            ))
-            
-            total_monthly += monthly_cost
-            total_annual += annual_cost
-            
-        except ValueError as e:
-            raise HTTPException(status_code=404, detail=str(e))
+        hourly_price = await PricingService.get_price_with_validation(
+            db=db,
+            provider=request.provider.value,
+            service_name=service_config.service,
+            resource_type=service_config.resource_type,
+            region=service_config.region,
+            pricing_model=service_config.pricing_model.value,
+            session_id=request.session_id
+        )
+        
+        discount = DISCOUNT_MODELS.get(service_config.pricing_model.value, 0.0)
+        final_hourly_price = hourly_price * (1 - discount)
+        
+        monthly_cost = (
+            service_config.quantity * 
+            final_hourly_price * 
+            service_config.hours_per_month
+        )
+        annual_cost = monthly_cost * 12
+        
+        services_breakdown.append(ServiceCostCalculation(
+            service=service_config.service,
+            resource_type=service_config.resource_type,
+            quantity=service_config.quantity,
+            region=service_config.region,
+            pricing_model=service_config.pricing_model.value,
+            base_hourly_price=hourly_price,
+            final_hourly_price=final_hourly_price,
+            monthly_cost=round(monthly_cost, 2),
+            annual_cost=round(annual_cost, 2)
+        ))
+        
+        total_monthly += monthly_cost
+        total_annual += annual_cost
     
     return CalculationResponse(
         total_monthly_cost=round(total_monthly, 2),
@@ -86,7 +80,7 @@ async def save_estimation(
     
     db_estimation = Estimation(
         user_id=estimation.user_id,
-        provider=estimation.provider,
+        provider=estimation.provider.value,
         name=estimation.name,
         status='saved',
         total_monthly_cost=estimation.data.get('total_monthly_cost'),
@@ -122,7 +116,7 @@ async def get_estimation(
     estimation = db.query(Estimation).filter(Estimation.id == estimation_id).first()
     
     if not estimation:
-        raise HTTPException(status_code=404, detail="Estimation not found")
+        raise EstimationNotFoundError(str(estimation_id))
     
     return estimation
 
@@ -155,7 +149,7 @@ async def export_estimation_csv(
     estimation = db.query(Estimation).filter(Estimation.id == estimation_id).first()
     
     if not estimation:
-        raise HTTPException(status_code=404, detail="Estimation not found")
+        raise EstimationNotFoundError(str(estimation_id))
     
     services = db.query(EstimationService).filter(EstimationService.estimation_id == estimation_id).all()
     

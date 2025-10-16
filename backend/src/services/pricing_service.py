@@ -1,8 +1,9 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, func
 from src.models.pricing import Pricing, PricingHistory
-from src.schemas import PricingCreate, PricingResponse
+from src.schemas import PricingCreate
 from src.redis_client import redis_client
+from src.exceptions import PriceNotFoundError
 import json
 from typing import Optional, List
 from uuid import UUID
@@ -39,7 +40,7 @@ class PricingService:
         ).first()
         
         if not db_price:
-            raise ValueError(f"Price not found for {resource_type} in {region}")
+            raise PriceNotFoundError(resource_type, region)
         
         if cached_price and redis_client:
             try:

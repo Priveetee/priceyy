@@ -1,10 +1,16 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
+import logging
 from src.database import init_db
 from src.redis_client import init_redis, close_redis
 from src.scheduler import schedule_pricing_refresh, shutdown_scheduler
 from src.api import api_router
+from src.exceptions import PriceyException
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -31,6 +37,22 @@ app.add_middleware(
 )
 
 app.include_router(api_router)
+
+@app.exception_handler(PriceyException)
+async def pricey_exception_handler(request: Request, exc: PriceyException):
+    logger.warning(f"Pricey exception: {exc.detail}")
+    return JSONResponse(
+        status_code=exc.status_code,
+        content=exc.detail
+    )
+
+@app.exception_handler(Exception)
+async def general_exception_handler(request: Request, exc: Exception):
+    logger.error(f"Unexpected error: {str(exc)}", exc_info=True)
+    return JSONResponse(
+        status_code=500,
+        content={"error": "Internal server error"}
+    )
 
 @app.get("/health")
 async def health():
