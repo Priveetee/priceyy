@@ -1,12 +1,16 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Body
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from src.database import get_db
 from src.schemas import CalculationRequest, CalculationResponse, ServiceCostCalculation, EstimationCreate, EstimationResponse
 from src.services.pricing_service import PricingService
-from src.models.estimation import Estimation, EstimationService
+from src.models.estimation import Estimation, EstimationService, UserPriceOverride
+from src.models.pricing import Pricing
 from typing import List
 from uuid import UUID
 import uuid
+import csv
+from io import StringIO
 
 router = APIRouter()
 
@@ -121,3 +125,64 @@ async def get_estimation(
         raise HTTPException(status_code=404, detail="Estimation not found")
     
     return estimation
+
+@router.post("/override-price")
+async def override_price(
+    data: dict = Body(...),
+    db: Session = Depends(get_db)
+):
+    session_id = data.get('session_id')
+    pricing_id = data.get('pricing_id')
+    custom_hourly_price = data.get('custom_hourly_price')
+    reason = data.get('reason')
+    
+    override = UserPriceOverride(
+        session_id=session_id,
+        pricing_id=UUID(pricing_id),
+        custom_hourly_price=custom_hourly_price,
+        reason=reason
+    )
+    db.add(override)
+    db.commit()
+    
+    return {"status": "ok", "message": f"Price overridden to €{custom_hourly_price}"}
+
+@router.get("/{estimation_id}/export-csv")
+async def export_estimation_csv(
+    estimation_id: UUID,
+    db: Session = Depends(get_db)
+):
+    estimation = db.query(Estimation).filter(Estimation.id == estimation_id).first()
+    
+    if not estimation:
+        raise HTTPException(status_code=404, detail="Estimation not found")
+    
+    services = db.query(EstimationService).filter(EstimationService.estimation_id == estimation_id).all()
+    
+    output = StringIO()
+    writer = csv.writer(output)
+    
+    writer.writerow(["ESTIMATION", estimation.name])
+    writer.writerow(["Provider", estimation.provider])
+    writer.writerow(["Total Monthly", f"€{estimation.total_monthly_cost}"])
+    writer.writerow(["Total Annual", f"€{estimation.total_annual_cost}"])
+    writer.writerow([])
+    
+    writer.writerow(["Service", "Resource", "Region", "Quantity", "Monthly Cost", "Annual Cost"])
+    
+    for service in services:
+        writer.writerow([
+            service.service_name,
+            service.parameters.get('resource_type'),
+            service.region,
+            service.quantity,
+            f"€{service.monthly_cost}",
+            f"€{service.annual_cost}"
+        ])
+    
+    output.seek(0)
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment;filename=estimation_{estimation_id}.csv"}
+    )
