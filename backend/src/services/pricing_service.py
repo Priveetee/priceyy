@@ -29,7 +29,7 @@ class PricingService:
             except Exception:
                 cached_price = None
         
-        db_price = db.query(Pricing).filter(
+        db_price_obj = db.query(Pricing).filter(
             and_(
                 Pricing.provider == provider,
                 Pricing.service_name == service_name,
@@ -39,30 +39,35 @@ class PricingService:
             )
         ).first()
         
-        if not db_price:
-            raise PriceNotFoundError(resource_type, region)
+        if db_price_obj:
+            hourly_price = db_price_obj.hourly_price
+        else:
+            from src.services.pricing_fallback_service import PricingFallbackService
+            hourly_price, _ = PricingFallbackService.get_price_or_fallback(
+                db, provider, service_name, resource_type, region, pricing_model
+            )
         
         if cached_price and redis_client:
             try:
                 cached_value = float(cached_price)
-                if abs(cached_value - db_price.hourly_price) > 0.001:
-                    await redis_client.set(cache_key, db_price.hourly_price, ex=28800)
+                if abs(cached_value - hourly_price) > 0.001:
+                    await redis_client.set(cache_key, hourly_price, ex=28800)
             except Exception:
                 pass
         elif redis_client:
             try:
-                await redis_client.set(cache_key, db_price.hourly_price, ex=28800)
+                await redis_client.set(cache_key, hourly_price, ex=28800)
             except Exception:
                 pass
         
-        final_price = db_price.hourly_price
+        final_price = hourly_price
         
         if session_id:
             from src.models.estimation import UserPriceOverride
             override = db.query(UserPriceOverride).filter(
                 and_(
                     UserPriceOverride.session_id == session_id,
-                    UserPriceOverride.pricing_id == db_price.id
+                    UserPriceOverride.pricing_id == db_price_obj.id if db_price_obj else None
                 )
             ).first()
             
