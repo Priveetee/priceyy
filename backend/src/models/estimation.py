@@ -1,11 +1,9 @@
 from sqlalchemy import Column, String, Float, DateTime, ForeignKey, Text, Integer
 from sqlalchemy.dialects.postgresql import UUID, JSONB
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 from datetime import datetime
 import uuid
-
-Base = declarative_base()
+from .base import Base
 
 class Estimation(Base):
     __tablename__ = 'estimations'

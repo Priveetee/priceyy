@@ -2,8 +2,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.pool import NullPool
 from src.config import settings
-from src.models.pricing import Base as PricingBase
-from src.models.estimation import Base as EstimationBase
+from src.models.base import Base
 
 engine = create_engine(
     settings.DATABASE_URL,
@@ -18,8 +17,7 @@ SessionLocal = sessionmaker(
 )
 
 def init_db():
-    PricingBase.metadata.create_all(bind=engine)
-    EstimationBase.metadata.create_all(bind=engine)
+    Base.metadata.create_all(bind=engine)
 
 def get_db() -> Session:
     db = SessionLocal()
