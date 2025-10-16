@@ -1,13 +1,13 @@
 from sqlalchemy import Column, String, Float, DateTime, ForeignKey, Text, Integer
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import relationship
-from datetime import datetime
+from datetime import datetime, timedelta
 import uuid
 from .base import Base
 
 class Estimation(Base):
     __tablename__ = 'estimations'
-    
+
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(String(255))
     provider = Column(String(50))
@@ -19,12 +19,12 @@ class Estimation(Base):
     total_annual_cost = Column(Float)
     data = Column(JSONB)
     notes = Column(Text)
-    
+
     services = relationship('EstimationService', back_populates='estimation', cascade='all, delete-orphan')
 
 class EstimationService(Base):
     __tablename__ = 'estimation_services'
-    
+
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     estimation_id = Column(UUID(as_uuid=True), ForeignKey('estimations.id'), nullable=False)
     service_name = Column(String(100))
@@ -34,12 +34,12 @@ class EstimationService(Base):
     annual_cost = Column(Float)
     parameters = Column(JSONB)
     created_at = Column(DateTime, default=datetime.utcnow)
-    
+
     estimation = relationship('Estimation', back_populates='services')
 
 class EstimationVersion(Base):
     __tablename__ = 'estimation_versions'
-    
+
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     estimation_id = Column(UUID(as_uuid=True), ForeignKey('estimations.id'), nullable=False)
     version_number = Column(Integer)
@@ -49,17 +49,18 @@ class EstimationVersion(Base):
 
 class UserPriceOverride(Base):
     __tablename__ = 'user_price_overrides'
-    
+
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     session_id = Column(String(255), nullable=False)
     pricing_id = Column(UUID(as_uuid=True), ForeignKey('pricing.id'), nullable=False)
     custom_hourly_price = Column(Float)
     reason = Column(String(255))
     created_at = Column(DateTime, default=datetime.utcnow)
+    session_expires_at = Column(DateTime, default=lambda: datetime.utcnow() + timedelta(hours=24))
 
 class PricingProposal(Base):
     __tablename__ = 'pricing_proposals'
-    
+
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(String(255))
     pricing_id = Column(UUID(as_uuid=True), ForeignKey('pricing.id'), nullable=False)

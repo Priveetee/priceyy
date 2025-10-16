@@ -37,11 +37,11 @@ audit_logger.setLevel(logging.INFO)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
-    await init_redis()
+    init_redis()
     schedule_pricing_refresh()
     logger.info("Application startup complete")
     yield
-    await close_redis()
+    close_redis()
     shutdown_scheduler()
     logger.info("Application shutdown complete")
 
@@ -89,9 +89,9 @@ async def health():
 async def ready():
     return {"status": "ready"}
 
+from src.api import auth
+app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
-
-from src.api import auth
-app.include_router(auth.router, prefix="/api/auth", tags=["auth"])

@@ -1,14 +1,16 @@
 from fastapi import APIRouter, Depends, Body, Request, HTTPException, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
+from datetime import timedelta, datetime
 from src.database import get_db
 from src.middleware.auth import get_current_user
 from src.schemas import CalculationRequest, CalculationResponse, ServiceCostCalculation, EstimationCreate, EstimationResponse
 from src.services.pricing_service import PricingService
 from src.services.data_transfer_service import DataTransferService
-from src.models.estimation import Estimation, EstimationService, UserPriceOverride
+from src.services.override_service import OverrideService
+from src.models.estimation import Estimation, EstimationService
 from src.models.pricing import Pricing
-from src.exceptions import EstimationNotFoundError, PriceNotFoundError
+from src.exceptions import EstimationNotFoundError
 from src.rate_limit import limiter
 from src.audit import log_calculation_performed, log_estimation_created, log_price_override, log_export_csv
 from typing import List
@@ -46,7 +48,7 @@ async def calculate_estimation(
     total_annual = 0
     
     for service_config in req.services:
-        hourly_price = await PricingService.get_price_with_validation(
+        hourly_price = PricingService.get_price_with_validation(
             db=db,
             provider=req.provider.value,
             service_name=service_config.service,
@@ -210,18 +212,31 @@ async def override_price(
     custom_hourly_price = data.get('custom_hourly_price')
     reason = data.get('reason')
     
-    override = UserPriceOverride(
-        session_id=session_id,
-        pricing_id=UUID(pricing_id),
-        custom_hourly_price=custom_hourly_price,
-        reason=reason
-    )
-    db.add(override)
-    db.commit()
+    if not all([session_id, pricing_id, custom_hourly_price]):
+        raise HTTPException(status_code=400, detail="Missing required fields")
     
+    OverrideService.set_override(session_id, pricing_id, custom_hourly_price, reason)
     log_price_override(session_id, str(pricing_id), 0, custom_hourly_price)
     
-    return {"status": "ok", "message": f"Price overridden to €{custom_hourly_price}"}
+    return {
+        "status": "ok",
+        "message": f"Price overridden to €{custom_hourly_price} (expires in 24h)",
+        "expires_at": (datetime.utcnow() + timedelta(hours=24)).isoformat()
+    }
+
+@router.post("/session/{session_id}/cleanup")
+@limiter.limit("10/minute")
+async def cleanup_session(
+    request: Request,
+    session_id: str,
+    db: Session = Depends(get_db),
+    user_id: str = Depends(get_current_user)
+):
+    count = OverrideService.cleanup_session(session_id)
+    return {
+        "status": "ok",
+        "message": f"Cleaned up {count} overrides for session {session_id}"
+    }
 
 @router.get("/{estimation_id}/export-csv")
 @limiter.limit("30/minute")
