@@ -50,3 +50,6 @@ yarn-error.log*
 
 # Docker
 docker-compose.override.yml
+
+# Logs
+backend/logs/audit.log

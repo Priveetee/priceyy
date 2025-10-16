@@ -5,7 +5,8 @@ from src.database import get_db
 from src.schemas import CalculationRequest, CalculationResponse, ServiceCostCalculation, EstimationCreate, EstimationResponse
 from src.services.pricing_service import PricingService
 from src.models.estimation import Estimation, EstimationService, UserPriceOverride
-from src.exceptions import EstimationNotFoundError
+from src.models.pricing import Pricing
+from src.exceptions import EstimationNotFoundError, PriceNotFoundError
 from src.rate_limit import limiter
 from src.audit import log_calculation_performed, log_estimation_created, log_price_override, log_export_csv
 from typing import List
@@ -21,6 +22,20 @@ DISCOUNT_MODELS = {
     "reserved-3y": 0.60,
     "spot": 0.90
 }
+
+def calculate_reserved_cost(hourly_price: float, upfront_cost: float, quantity: int, hours_per_month: int, commitment_years: int) -> float:
+    """
+    Calcule le coût mensuel pour une instance reserved.
+    
+    Formula:
+    monthly_cost = (upfront_cost / (commitment_years * 12) / quantity) + (hourly_price * hours_per_month)
+    """
+    if upfront_cost and upfront_cost > 0:
+        monthly_upfront = (upfront_cost / (commitment_years * 12)) / quantity
+        monthly_hourly = hourly_price * hours_per_month
+        return monthly_upfront + monthly_hourly
+    else:
+        return hourly_price * hours_per_month
 
 @router.post("/calculate", response_model=CalculationResponse)
 @limiter.limit("10/minute")
@@ -44,14 +59,42 @@ async def calculate_estimation(
             session_id=req.session_id
         )
         
+        db_price = db.query(Pricing).filter(
+            Pricing.provider == req.provider.value,
+            Pricing.service_name == service_config.service,
+            Pricing.resource_type == service_config.resource_type,
+            Pricing.region == service_config.region,
+            Pricing.pricing_model == service_config.pricing_model.value
+        ).first()
+        
+        upfront_cost = db_price.upfront_cost if db_price else 0
+        
         discount = DISCOUNT_MODELS.get(service_config.pricing_model.value, 0.0)
         final_hourly_price = hourly_price * (1 - discount)
         
-        monthly_cost = (
-            service_config.quantity * 
-            final_hourly_price * 
-            service_config.hours_per_month
-        )
+        if service_config.pricing_model.value == "reserved-1y":
+            monthly_cost = calculate_reserved_cost(
+                final_hourly_price,
+                upfront_cost,
+                service_config.quantity,
+                service_config.hours_per_month,
+                1
+            )
+        elif service_config.pricing_model.value == "reserved-3y":
+            monthly_cost = calculate_reserved_cost(
+                final_hourly_price,
+                upfront_cost,
+                service_config.quantity,
+                service_config.hours_per_month,
+                3
+            )
+        else:
+            monthly_cost = (
+                service_config.quantity * 
+                final_hourly_price * 
+                service_config.hours_per_month
+            )
+        
         annual_cost = monthly_cost * 12
         
         services_breakdown.append(ServiceCostCalculation(
@@ -88,6 +131,7 @@ async def save_estimation(
     
     db_estimation = Estimation(
         user_id=estimation.user_id,
+        created_by=estimation.user_id,
         provider=estimation.provider.value,
         name=estimation.name,
         status='saved',

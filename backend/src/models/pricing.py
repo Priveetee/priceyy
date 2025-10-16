@@ -15,6 +15,7 @@ class Pricing(Base):
     region = Column(String(100), nullable=False)
     pricing_model = Column(String(50), nullable=False)
     hourly_price = Column(Float, nullable=False)
+    upfront_cost = Column(Float, nullable=True)
     yearly_commitment_discount = Column(Float)
     currency = Column(String(3), default='EUR')
     last_updated = Column(DateTime, default=datetime.utcnow)
