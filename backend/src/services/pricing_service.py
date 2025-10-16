@@ -21,7 +21,12 @@ class PricingService:
     ) -> float:
         cache_key = f"pricing:{provider}:{service_name}:{resource_type}:{region}:{pricing_model}"
         
-        cached_price = await redis_client.get(cache_key)
+        cached_price = None
+        if redis_client:
+            try:
+                cached_price = await redis_client.get(cache_key)
+            except Exception:
+                cached_price = None
         
         db_price = db.query(Pricing).filter(
             and_(
@@ -36,12 +41,18 @@ class PricingService:
         if not db_price:
             raise ValueError(f"Price not found for {resource_type} in {region}")
         
-        if cached_price:
-            cached_value = float(cached_price)
-            if abs(cached_value - db_price.hourly_price) > 0.001:
+        if cached_price and redis_client:
+            try:
+                cached_value = float(cached_price)
+                if abs(cached_value - db_price.hourly_price) > 0.001:
+                    await redis_client.set(cache_key, db_price.hourly_price, ex=28800)
+            except Exception:
+                pass
+        elif redis_client:
+            try:
                 await redis_client.set(cache_key, db_price.hourly_price, ex=28800)
-        else:
-            await redis_client.set(cache_key, db_price.hourly_price, ex=28800)
+            except Exception:
+                pass
         
         final_price = db_price.hourly_price
         

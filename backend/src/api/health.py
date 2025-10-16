@@ -34,7 +34,7 @@ async def refresh_azure_prices(db: Session = Depends(get_db)):
     try:
         azure_service = AzurePricingService()
         
-        prices = await azure_service.fetch_vm_prices('Standard_D4s_v3', 'West Europe')
+        prices = await azure_service.fetch_vm_prices('Standard_D4s_v3', 'westeurope')
         
         for price in prices:
             PricingService.update_price_if_changed(

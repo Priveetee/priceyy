@@ -34,8 +34,8 @@ async def refresh_all_prices():
                 )
         
         vms_to_fetch = [
-            ('Standard_D4s_v3', 'West Europe'),
-            ('Standard_D8s_v3', 'West Europe'),
+            ('Standard_D4s_v3', 'westeurope'),
+            ('Standard_D8s_v3', 'westeurope'),
         ]
         
         for vm_type, region in vms_to_fetch:
@@ -46,7 +46,7 @@ async def refresh_all_prices():
                     provider='azure',
                     service_name=price['service'],
                     resource_type=price['resource_type'],
-                    region='westeurope',
+                    region=region,
                     pricing_model=price['pricing_model'],
                     new_hourly_price=price['hourly_price']
                 )
