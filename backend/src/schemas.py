@@ -29,7 +29,7 @@ class PricingResponse(PricingBase):
 class EstimationServiceBase(BaseModel):
     service_name: str
     region: str
-    quantity: int = Field(gt=0, le=10000)
+    quantity: int = Field(gt=0, le=100000)
     monthly_cost: float = Field(ge=0)
     annual_cost: float = Field(ge=0)
     parameters: dict
@@ -71,15 +71,28 @@ class EstimationResponse(EstimationBase):
 class ServiceConfig(BaseModel):
     service: str
     resource_type: str
-    quantity: int = Field(gt=0, le=10000)
+    quantity: int = Field(gt=0, le=100000)
     region: str
     pricing_model: PricingModel
     hours_per_month: int = Field(default=730, gt=0, le=8760)
+    
+    @field_validator('hours_per_month')
+    def validate_hours(cls, v):
+        if v < 1 or v > 8760:
+            raise ValueError('hours_per_month must be between 1 and 8760')
+        return v
+
+class DataTransferConfig(BaseModel):
+    from_region: str
+    to_region: str
+    transfer_type: str = "internet-out"
+    data_transfer_gb: float = Field(ge=0, le=1000000)
 
 class CalculationRequest(BaseModel):
     provider: Provider
     services: List[ServiceConfig] = Field(min_items=1)
     session_id: Optional[str] = Field(None, max_length=255)
+    data_transfers: Optional[List[DataTransferConfig]] = Field(default_factory=list)
 
 class ServiceCostCalculation(BaseModel):
     service: str
@@ -109,15 +122,3 @@ class UserPriceOverrideResponse(UserPriceOverrideCreate):
     
     class Config:
         from_attributes = True
-
-class DataTransferConfig(BaseModel):
-    from_region: str
-    to_region: str
-    transfer_type: str = "internet-out"  # internet-out, cross-region, cross-az
-    data_transfer_gb: float = Field(ge=0)
-
-class CalculationRequest(BaseModel):
-    provider: Provider
-    services: List[ServiceConfig] = Field(min_items=1)
-    session_id: Optional[str] = Field(None, max_length=255)
-    data_transfers: Optional[List[DataTransferConfig]] = Field(default_factory=list)
