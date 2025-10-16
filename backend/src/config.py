@@ -1,18 +1,15 @@
+import os
 from pydantic_settings import BaseSettings
-from typing import Optional
 
 class Settings(BaseSettings):
-    DATABASE_URL: str
-    REDIS_URL: str
-    AWS_ACCESS_KEY_ID: Optional[str] = None
-    AWS_SECRET_ACCESS_KEY: Optional[str] = None
-    AZURE_SUBSCRIPTION_ID: Optional[str] = None
-    AZURE_TENANT_ID: Optional[str] = None
-    AZURE_CLIENT_ID: Optional[str] = None
-    AZURE_CLIENT_SECRET: Optional[str] = None
+    DATABASE_URL: str = os.getenv("DATABASE_URL", "postgresql://user:password@localhost:5432/priceyy")
+    REDIS_URL: str = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+    SECRET_KEY: str = os.getenv("SECRET_KEY", "your-secret-key")
+    OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
+    AZURE_SUBSCRIPTION_ID: str = os.getenv("AZURE_SUBSCRIPTION_ID", "")
     
     class Config:
-        env_file = '../.env'
-        case_sensitive = True
+        env_file = ".env"
 
 settings = Settings()
+SECRET_KEY = settings.SECRET_KEY
