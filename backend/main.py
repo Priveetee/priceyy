@@ -63,7 +63,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(api_router)
+app.include_router(api_router, prefix="/api")
 
 @app.exception_handler(PriceyException)
 async def pricey_exception_handler(request: Request, exc: PriceyException):
@@ -88,9 +88,6 @@ async def health():
 @app.get("/ready")
 async def ready():
     return {"status": "ready"}
-
-from src.api import auth
-app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 
 if __name__ == "__main__":
     import uvicorn
