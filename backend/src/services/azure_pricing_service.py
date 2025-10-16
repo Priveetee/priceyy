@@ -19,9 +19,6 @@ class AzurePricingService:
                     response.raise_for_status()
                     data = response.json()
                     
-                    print(f"Azure VM query: {filter_query}")
-                    print(f"Azure response items: {len(data.get('Items', []))}")
-                    
                     for item in data.get('Items', []):
                         prices.append({
                             'service': 'VirtualMachines',
@@ -36,5 +33,4 @@ class AzurePricingService:
                 
                 return prices
         except Exception as e:
-            print(f"Error fetching Azure pricing: {e}")
             raise Exception(f"Error fetching Azure pricing: {str(e)}")
