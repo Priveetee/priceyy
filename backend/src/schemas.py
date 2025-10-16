@@ -1,17 +1,18 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from typing import Optional, List
 from datetime import datetime
 from uuid import UUID
+from src.enums import Provider, PricingModel
 
 class PricingBase(BaseModel):
-    provider: str
+    provider: Provider
     service_name: str
     resource_type: str
     region: str
-    pricing_model: str
-    hourly_price: float
-    yearly_commitment_discount: Optional[float] = None
-    currency: str = 'EUR'
+    pricing_model: PricingModel
+    hourly_price: float = Field(gt=0, decimal_places=6)
+    yearly_commitment_discount: Optional[float] = Field(None, ge=0, le=1)
+    currency: str = "EUR"
     source: Optional[str] = None
 
 class PricingCreate(PricingBase):
@@ -25,23 +26,12 @@ class PricingResponse(PricingBase):
     class Config:
         from_attributes = True
 
-class PricingHistoryResponse(BaseModel):
-    id: UUID
-    pricing_id: UUID
-    old_hourly_price: Optional[float]
-    new_hourly_price: Optional[float]
-    change_reason: str
-    changed_at: datetime
-    
-    class Config:
-        from_attributes = True
-
 class EstimationServiceBase(BaseModel):
     service_name: str
     region: str
-    quantity: int
-    monthly_cost: float
-    annual_cost: float
+    quantity: int = Field(gt=0, le=10000)
+    monthly_cost: float = Field(ge=0)
+    annual_cost: float = Field(ge=0)
     parameters: dict
 
 class EstimationServiceCreate(EstimationServiceBase):
@@ -56,12 +46,12 @@ class EstimationServiceResponse(EstimationServiceBase):
         from_attributes = True
 
 class EstimationBase(BaseModel):
-    name: str
-    provider: str
-    notes: Optional[str] = None
+    name: str = Field(min_length=1, max_length=255)
+    provider: Provider
+    notes: Optional[str] = Field(None, max_length=1000)
 
 class EstimationCreate(EstimationBase):
-    user_id: Optional[str] = None
+    user_id: Optional[str] = Field(None, max_length=255)
     data: dict
     services: List[EstimationServiceCreate]
 
@@ -69,8 +59,8 @@ class EstimationResponse(EstimationBase):
     id: UUID
     user_id: Optional[str]
     status: str
-    total_monthly_cost: float
-    total_annual_cost: float
+    total_monthly_cost: float = Field(ge=0)
+    total_annual_cost: float = Field(ge=0)
     created_at: datetime
     updated_at: datetime
     services: List[EstimationServiceResponse]
@@ -78,34 +68,18 @@ class EstimationResponse(EstimationBase):
     class Config:
         from_attributes = True
 
-class UserPriceOverrideCreate(BaseModel):
-    session_id: str
-    pricing_id: UUID
-    custom_hourly_price: float
-    reason: Optional[str] = None
+class ServiceConfig(BaseModel):
+    service: str
+    resource_type: str
+    quantity: int = Field(gt=0, le=10000)
+    region: str
+    pricing_model: PricingModel
+    hours_per_month: int = Field(default=730, gt=0, le=8760)
 
-class UserPriceOverrideResponse(UserPriceOverrideCreate):
-    id: UUID
-    created_at: datetime
-    
-    class Config:
-        from_attributes = True
-
-class PricingProposalCreate(BaseModel):
-    pricing_id: UUID
-    proposed_hourly_price: float
-    rationale: str
-    user_id: Optional[str] = None
-
-class PricingProposalResponse(PricingProposalCreate):
-    id: UUID
-    status: str
-    created_at: datetime
-    reviewed_at: Optional[datetime] = None
-    reviewed_by: Optional[str] = None
-    
-    class Config:
-        from_attributes = True
+class CalculationRequest(BaseModel):
+    provider: Provider
+    services: List[ServiceConfig] = Field(min_items=1)
+    session_id: Optional[str] = Field(None, max_length=255)
 
 class ServiceCostCalculation(BaseModel):
     service: str
@@ -118,12 +92,20 @@ class ServiceCostCalculation(BaseModel):
     monthly_cost: float
     annual_cost: float
 
-class CalculationRequest(BaseModel):
-    provider: str
-    services: List[dict]
-    session_id: Optional[str] = None
-
 class CalculationResponse(BaseModel):
     total_monthly_cost: float
     total_annual_cost: float
     services_breakdown: List[ServiceCostCalculation]
+
+class UserPriceOverrideCreate(BaseModel):
+    session_id: str = Field(min_length=1, max_length=255)
+    pricing_id: UUID
+    custom_hourly_price: float = Field(gt=0, decimal_places=6)
+    reason: Optional[str] = Field(None, max_length=500)
+
+class UserPriceOverrideResponse(UserPriceOverrideCreate):
+    id: UUID
+    created_at: datetime
+    
+    class Config:
+        from_attributes = True
