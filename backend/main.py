@@ -3,6 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 import logging
+import logging.handlers
+import os
 from src.database import init_db
 from src.redis_client import init_redis, close_redis
 from src.scheduler import schedule_pricing_refresh, shutdown_scheduler
@@ -11,17 +13,37 @@ from src.exceptions import PriceyException
 from src.rate_limit import limiter, rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+
 logger = logging.getLogger(__name__)
+
+audit_logger = logging.getLogger("audit")
+log_dir = '/app/logs'
+os.makedirs(log_dir, exist_ok=True)
+
+audit_handler = logging.handlers.RotatingFileHandler(
+    os.path.join(log_dir, 'audit.log'),
+    maxBytes=10485760,
+    backupCount=10,
+    delay=True
+)
+audit_handler.setFormatter(logging.Formatter('%(message)s'))
+audit_logger.addHandler(audit_handler)
+audit_logger.setLevel(logging.INFO)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
     await init_redis()
     schedule_pricing_refresh()
+    logger.info("Application startup complete")
     yield
     await close_redis()
     shutdown_scheduler()
+    logger.info("Application shutdown complete")
 
 app = FastAPI(
     title="Priceyy",

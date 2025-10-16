@@ -7,6 +7,7 @@ from src.services.pricing_service import PricingService
 from src.models.estimation import Estimation, EstimationService, UserPriceOverride
 from src.exceptions import EstimationNotFoundError
 from src.rate_limit import limiter
+from src.audit import log_calculation_performed, log_estimation_created, log_price_override, log_export_csv
 from typing import List
 from uuid import UUID
 import csv
@@ -68,6 +69,8 @@ async def calculate_estimation(
         total_monthly += monthly_cost
         total_annual += annual_cost
     
+    log_calculation_performed(req.session_id, req.provider.value, len(req.services))
+    
     return CalculationResponse(
         total_monthly_cost=round(total_monthly, 2),
         total_annual_cost=round(total_annual, 2),
@@ -111,6 +114,9 @@ async def save_estimation(
     
     db.commit()
     db.refresh(db_estimation)
+    
+    log_estimation_created(str(db_estimation.id), estimation.user_id, estimation.provider.value)
+    
     return db_estimation
 
 @router.get("/{estimation_id}", response_model=EstimationResponse)
@@ -147,6 +153,8 @@ async def override_price(
     )
     db.add(override)
     db.commit()
+    
+    log_price_override(session_id, str(pricing_id), 0, custom_hourly_price)
     
     return {"status": "ok", "message": f"Price overridden to €{custom_hourly_price}"}
 
@@ -186,6 +194,9 @@ async def export_estimation_csv(
         ])
     
     output.seek(0)
+    
+    log_export_csv(str(estimation_id), estimation.user_id)
+    
     return StreamingResponse(
         iter([output.getvalue()]),
         media_type="text/csv",
