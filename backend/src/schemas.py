@@ -109,3 +109,15 @@ class UserPriceOverrideResponse(UserPriceOverrideCreate):
     
     class Config:
         from_attributes = True
+
+class DataTransferConfig(BaseModel):
+    from_region: str
+    to_region: str
+    transfer_type: str = "internet-out"  # internet-out, cross-region, cross-az
+    data_transfer_gb: float = Field(ge=0)
+
+class CalculationRequest(BaseModel):
+    provider: Provider
+    services: List[ServiceConfig] = Field(min_items=1)
+    session_id: Optional[str] = Field(None, max_length=255)
+    data_transfers: Optional[List[DataTransferConfig]] = Field(default_factory=list)

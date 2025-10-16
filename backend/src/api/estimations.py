@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from src.database import get_db
 from src.schemas import CalculationRequest, CalculationResponse, ServiceCostCalculation, EstimationCreate, EstimationResponse
 from src.services.pricing_service import PricingService
+from src.services.data_transfer_service import DataTransferService
 from src.models.estimation import Estimation, EstimationService, UserPriceOverride
 from src.models.pricing import Pricing
 from src.exceptions import EstimationNotFoundError, PriceNotFoundError
@@ -111,6 +112,22 @@ async def calculate_estimation(
         
         total_monthly += monthly_cost
         total_annual += annual_cost
+    
+    total_data_transfer_cost = 0
+    if req.data_transfers:
+        for transfer in req.data_transfers:
+            cost = DataTransferService.calculate_transfer_cost(
+                db=db,
+                provider=req.provider.value,
+                from_region=transfer.from_region,
+                to_region=transfer.to_region,
+                transfer_type=transfer.transfer_type,
+                data_transfer_gb=transfer.data_transfer_gb
+            )
+            total_data_transfer_cost += cost
+    
+    total_monthly += total_data_transfer_cost
+    total_annual += total_data_transfer_cost * 12
     
     log_calculation_performed(req.session_id, req.provider.value, len(req.services))
     

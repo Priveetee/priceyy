@@ -35,3 +35,17 @@ class PricingHistory(Base):
     changed_at = Column(DateTime, default=datetime.utcnow)
     
     pricing = relationship('Pricing', back_populates='history')
+
+class DataTransferPricing(Base):
+    __tablename__ = 'data_transfer_pricing'
+    
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    provider = Column(String(50), nullable=False)
+    from_region = Column(String(100), nullable=False)
+    to_region = Column(String(100), nullable=False)
+    transfer_type = Column(String(50), nullable=False)
+    price_per_gb = Column(Float, nullable=False)
+    currency = Column(String(3), default='EUR')
+    last_updated = Column(DateTime, default=datetime.utcnow)
+    source = Column(String(50))
+    created_at = Column(DateTime, default=datetime.utcnow)
