@@ -4,70 +4,118 @@ from src.services.azure_pricing_service import AzurePricingService
 from src.services.pricing_service import PricingService
 from src.database import SessionLocal
 from datetime import datetime
+import asyncio
+import logging
+import json
+
+logger = logging.getLogger(__name__)
 
 scheduler = BackgroundScheduler()
+last_successful_run = None
 
-def refresh_all_prices():
+async def refresh_all_prices():
+    global last_successful_run
     db = SessionLocal()
+    start_time = datetime.utcnow()
+    
     try:
         aws_service = AWSPricingService()
         azure_service = AzurePricingService()
-
+        
         instances_to_fetch = [
             ('t3.large', 'EU (Ireland)', 'eu-west-1'),
             ('t3.xlarge', 'EU (Ireland)', 'eu-west-1'),
             ('m5.2xlarge', 'EU (Ireland)', 'eu-west-1'),
         ]
-
+        
+        aws_count = 0
         for instance_type, aws_region, db_region in instances_to_fetch:
-            prices = aws_service.fetch_ec2_prices(instance_type, aws_region)
-            for price in prices:
-                PricingService.update_price_if_changed(
-                    db=db,
-                    provider='aws',
-                    service_name=price['service'],
-                    resource_type=price['resource_type'],
-                    region=db_region,
-                    pricing_model=price['pricing_model'],
-                    new_hourly_price=price['hourly_price']
-                )
-
+            try:
+                prices = await aws_service.fetch_ec2_prices(instance_type, aws_region)
+                for price in prices:
+                    PricingService.update_price_if_changed(
+                        db=db,
+                        provider='aws',
+                        service_name=price['service'],
+                        resource_type=price['resource_type'],
+                        region=db_region,
+                        pricing_model=price['pricing_model'],
+                        new_hourly_price=price['hourly_price']
+                    )
+                    aws_count += 1
+            except Exception as e:
+                logger.error(json.dumps({
+                    "event": "scheduler.aws_fetch_error",
+                    "instance_type": instance_type,
+                    "error": str(e)
+                }))
+        
         vms_to_fetch = [
             ('Standard_D4s_v3', 'westeurope'),
             ('Standard_D8s_v3', 'westeurope'),
         ]
-
+        
+        azure_count = 0
         for vm_type, region in vms_to_fetch:
-            prices = aws_service.fetch_vm_prices(vm_type, region)
-            for price in prices:
-                PricingService.update_price_if_changed(
-                    db=db,
-                    provider='azure',
-                    service_name=price['service'],
-                    resource_type=price['resource_type'],
-                    region=region,
-                    pricing_model=price['pricing_model'],
-                    new_hourly_price=price['hourly_price']
-                )
-
-        print(f"Pricing refresh completed at {datetime.now()}")
+            try:
+                prices = await azure_service.fetch_vm_prices(vm_type, region)
+                for price in prices:
+                    PricingService.update_price_if_changed(
+                        db=db,
+                        provider='azure',
+                        service_name=price['service'],
+                        resource_type=price['resource_type'],
+                        region=region,
+                        pricing_model=price['pricing_model'],
+                        new_hourly_price=price['hourly_price']
+                    )
+                    azure_count += 1
+            except Exception as e:
+                logger.error(json.dumps({
+                    "event": "scheduler.azure_fetch_error",
+                    "vm_type": vm_type,
+                    "error": str(e)
+                }))
+        
+        duration_ms = (datetime.utcnow() - start_time).total_seconds() * 1000
+        last_successful_run = datetime.utcnow()
+        
+        logger.info(json.dumps({
+            "event": "scheduler.pricing_refresh_success",
+            "aws_prices_updated": aws_count,
+            "azure_prices_updated": azure_count,
+            "duration_ms": round(duration_ms, 2)
+        }))
 
     except Exception as e:
-        print(f"Error refreshing prices: {str(e)}")
+        duration_ms = (datetime.utcnow() - start_time).total_seconds() * 1000
+        logger.critical(json.dumps({
+            "event": "scheduler.pricing_refresh_failed",
+            "error": str(e),
+            "duration_ms": round(duration_ms, 2)
+        }))
     finally:
         db.close()
 
 def schedule_pricing_refresh():
     scheduler.add_job(
-        func=refresh_all_prices,
+        func=lambda: asyncio.run(refresh_all_prices()),
         trigger='interval',
         hours=6,
         id='refresh_prices',
         name='Refresh cloud pricing',
-        replace_existing=True
+        replace_existing=True,
+        max_instances=1
     )
     scheduler.start()
 
 def shutdown_scheduler():
     if scheduler.running:
         scheduler.shutdown()
+
+def get_scheduler_health() -> dict:
+    return {
+        "scheduler_running": scheduler.running,
+        "last_successful_run": last_successful_run.isoformat() if last_successful_run else None,
+        "jobs_scheduled": len(scheduler.get_jobs())
+    }

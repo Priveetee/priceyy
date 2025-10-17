@@ -1,6 +1,6 @@
-from fastapi import APIRouter, Depends, Body, Request, HTTPException, status
+from fastapi import APIRouter, Depends, Body, Request, HTTPException, status, Query
 from fastapi.responses import StreamingResponse
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from datetime import timedelta, datetime
 from src.database import get_db
 from src.middleware.auth import get_current_user
@@ -187,11 +187,14 @@ async def list_estimations(
     request: Request,
     db: Session = Depends(get_db),
     user_id: str = Depends(get_current_user),
-    limit: int = 10,
-    offset: int = 0
+    limit: int = Query(10, ge=1, le=100),
+    offset: int = Query(0, ge=0)
 ):
     total = db.query(Estimation).filter(Estimation.user_id == user_id).count()
-    estimations = db.query(Estimation).filter(
+    
+    estimations = db.query(Estimation).options(
+        joinedload(Estimation.services)
+    ).filter(
         Estimation.user_id == user_id
     ).order_by(Estimation.created_at.desc()).limit(limit).offset(offset).all()
     
@@ -210,7 +213,9 @@ async def get_estimation(
     db: Session = Depends(get_db),
     user_id: str = Depends(get_current_user)
 ):
-    estimation = db.query(Estimation).filter(
+    estimation = db.query(Estimation).options(
+        joinedload(Estimation.services)
+    ).filter(
         Estimation.id == estimation_id,
         Estimation.user_id == user_id
     ).first()
@@ -377,15 +382,15 @@ async def export_estimation_csv(
     db: Session = Depends(get_db),
     user_id: str = Depends(get_current_user)
 ):
-    estimation = db.query(Estimation).filter(
+    estimation = db.query(Estimation).options(
+        joinedload(Estimation.services)
+    ).filter(
         Estimation.id == estimation_id,
         Estimation.user_id == user_id
     ).first()
     
     if not estimation:
         raise EstimationNotFoundError(str(estimation_id))
-    
-    services = db.query(EstimationService).filter(EstimationService.estimation_id == estimation_id).all()
     
     output = StringIO()
     writer = csv.writer(output)
@@ -398,7 +403,7 @@ async def export_estimation_csv(
     
     writer.writerow(["Service", "Resource", "Region", "Quantity", "Monthly Cost", "Annual Cost"])
     
-    for service in services:
+    for service in estimation.services:
         writer.writerow([
             service.service_name,
             service.parameters.get('resource_type'),
