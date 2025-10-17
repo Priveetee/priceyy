@@ -417,3 +417,43 @@ async def export_estimation_csv(
         media_type="text/csv",
         headers={"Content-Disposition": f"attachment;filename=estimation_{estimation_id}.csv"}
     )
+
+@router.get("/{id1}/compare/{id2}")
+@limiter.limit("50/minute")
+async def compare_estimations(
+    request: Request,
+    id1: UUID,
+    id2: UUID,
+    db: Session = Depends(get_db),
+    user_id: str = Depends(get_current_user)
+):
+    from src.services.comparison_service import ComparisonService
+    
+    est1 = db.query(Estimation).filter(
+        Estimation.id == id1,
+        Estimation.user_id == user_id
+    ).first()
+    
+    est2 = db.query(Estimation).filter(
+        Estimation.id == id2,
+        Estimation.user_id == user_id
+    ).first()
+    
+    if not est1 or not est2:
+        raise EstimationNotFoundError(f"One or both estimations not found")
+    
+    comparison = ComparisonService.compare_estimations(est1, est2)
+    
+    return {
+        "estimation_1": {
+            "id": str(est1.id),
+            "name": est1.name,
+            "created_at": est1.created_at
+        },
+        "estimation_2": {
+            "id": str(est2.id),
+            "name": est2.name,
+            "created_at": est2.created_at
+        },
+        "comparison": comparison
+    }

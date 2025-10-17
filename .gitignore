@@ -52,4 +52,4 @@ yarn-error.log*
 docker-compose.override.yml
 
 # Logs
-backend/logs/audit.log
+backend/logs/audit.logbackend/logs/audit.log
