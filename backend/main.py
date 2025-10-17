@@ -16,6 +16,7 @@ from src.rate_limit import limiter, rate_limit_exceeded_handler
 from src.middleware.monitoring import monitoring_middleware
 from src.middleware.size_limits import size_limit_middleware
 from src.middleware.compression import add_compression_middleware
+from src.middleware.rate_limit_tracking import RateLimitTrackingMiddleware
 from src.logging_config import setup_logging
 from src.services.health_service import HealthService
 from slowapi.errors import RateLimitExceeded
@@ -70,6 +71,7 @@ add_compression_middleware(app)
 
 app.middleware("http")(size_limit_middleware)
 app.middleware("http")(monitoring_middleware)
+app.add_middleware(RateLimitTrackingMiddleware)
 
 app.include_router(api_router, prefix="/api")
 app.include_router(monitoring_router, prefix="/api/monitoring")

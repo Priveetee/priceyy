@@ -36,7 +36,7 @@ def calculate_reserved_cost(hourly_price: float, upfront_cost: float, quantity: 
         return hourly_price * hours_per_month
 
 @router.post("/calculate", response_model=CalculationResponse)
-@limiter.limit("10/minute")
+@limiter.limit("5000/minute")
 async def calculate_estimation(
     request: Request,
     req: CalculationRequest,
@@ -134,7 +134,7 @@ async def calculate_estimation(
     )
 
 @router.post("/save", response_model=EstimationResponse)
-@limiter.limit("30/minute")
+@limiter.limit("2000/minute")
 async def save_estimation(
     request: Request,
     estimation: EstimationCreate,
@@ -177,7 +177,7 @@ async def save_estimation(
     return db_estimation
 
 @router.get("")
-@limiter.limit("50/minute")
+@limiter.limit("1500/minute")
 async def list_estimations(
     request: Request,
     db: Session = Depends(get_db),
@@ -201,7 +201,7 @@ async def list_estimations(
     }
 
 @router.get("/{estimation_id}", response_model=EstimationResponse)
-@limiter.limit("50/minute")
+@limiter.limit("1000/minute")
 async def get_estimation(
     request: Request,
     estimation_id: UUID,
@@ -221,7 +221,7 @@ async def get_estimation(
     return estimation
 
 @router.delete("/{estimation_id}")
-@limiter.limit("30/minute")
+@limiter.limit("1000/minute")
 async def delete_estimation(
     request: Request,
     estimation_id: UUID,
@@ -246,7 +246,7 @@ async def delete_estimation(
     return {"status": "ok", "message": f"Estimation {estimation_id} deleted"}
 
 @router.get("/{estimation_id}/history")
-@limiter.limit("50/minute")
+@limiter.limit("1000/minute")
 async def get_estimation_history(
     request: Request,
     estimation_id: UUID,
@@ -273,7 +273,7 @@ async def get_estimation_history(
     }
 
 @router.patch("/{estimation_id}")
-@limiter.limit("20/minute")
+@limiter.limit("1000/minute")
 async def update_estimation(
     request: Request,
     estimation_id: UUID,
@@ -331,7 +331,7 @@ async def update_estimation(
     }
 
 @router.post("/override-price")
-@limiter.limit("20/minute")
+@limiter.limit("1000/minute")
 async def override_price(
     request: Request,
     data: dict = Body(...),
@@ -356,7 +356,7 @@ async def override_price(
     }
 
 @router.post("/session/{session_id}/cleanup")
-@limiter.limit("10/minute")
+@limiter.limit("1000/minute")
 async def cleanup_session(
     request: Request,
     session_id: str,
@@ -370,7 +370,7 @@ async def cleanup_session(
     }
 
 @router.get("/{estimation_id}/export-csv")
-@limiter.limit("30/minute")
+@limiter.limit("1000/minute")
 async def export_estimation_csv(
     request: Request,
     estimation_id: UUID,
@@ -425,7 +425,7 @@ async def export_estimation_csv(
     )
 
 @router.get("/{id1}/compare/{id2}")
-@limiter.limit("50/minute")
+@limiter.limit("1000/minute")
 async def compare_estimations(
     request: Request,
     id1: UUID,
