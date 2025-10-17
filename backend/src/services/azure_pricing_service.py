@@ -1,36 +1,53 @@
 import httpx
-from typing import List, Dict
+import logging
+import json
+from src.services.retry_service import CircuitBreaker, retry_with_backoff
+
+logger = logging.getLogger(__name__)
+
+azure_breaker = CircuitBreaker("azure-pricing-api", failure_threshold=5, timeout=60)
 
 class AzurePricingService:
-    
-    BASE_URL = 'https://prices.azure.com/api/retail/prices'
-    
-    async def fetch_vm_prices(self, vm_type: str, region: str) -> List[Dict]:
+    @staticmethod
+    async def fetch_vm_prices(vm_type: str, region: str):
+        async def fetch():
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                url = f"https://prices.azure.com/api/v1/retail/Catalog/search?$filter=serviceName eq 'Virtual Machines' and skuName eq '{vm_type}' and location eq '{region}'"
+                response = await client.get(url)
+                response.raise_for_status()
+                return response.json()
+        
         try:
-            filter_query = f"serviceName eq 'Virtual Machines' and armSkuName eq '{vm_type}' and armRegionName eq '{region}' and priceType eq 'Consumption'"
-            
-            async with httpx.AsyncClient() as client:
-                prices = []
-                url = self.BASE_URL
-                params = {'$filter': filter_query}
-                
-                while url:
-                    response = await client.get(url, params=params)
-                    response.raise_for_status()
-                    data = response.json()
-                    
-                    for item in data.get('Items', []):
-                        prices.append({
-                            'service': 'VirtualMachines',
-                            'resource_type': vm_type,
-                            'region': region,
-                            'pricing_model': 'on-demand',
-                            'hourly_price': float(item.get('unitPrice', item.get('retailPrice', 0)))
-                        })
-                    
-                    url = data.get('NextPageLink')
-                    params = {}
-                
-                return prices
+            return await retry_with_backoff(fetch, max_retries=3, backoff=1.0)
         except Exception as e:
-            raise Exception(f"Error fetching Azure pricing: {str(e)}")
+            logger.error(json.dumps({
+                "event": "azure.pricing.fetch_failed",
+                "service": "VirtualMachines",
+                "vm_type": vm_type,
+                "region": region,
+                "error": str(e)
+            }))
+            azure_breaker.record_failure()
+            return []
+    
+    @staticmethod
+    async def fetch_database_prices(db_type: str, region: str):
+        async def fetch():
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                url = f"https://prices.azure.com/api/v1/retail/Catalog/search?$filter=serviceName eq 'Azure Database for PostgreSQL' and skuName eq '{db_type}' and location eq '{region}'"
+                response = await client.get(url)
+                response.raise_for_status()
+                return response.json()
+        
+        try:
+            return await retry_with_backoff(fetch, max_retries=3, backoff=1.0)
+        except Exception as e:
+            logger.error(json.dumps({
+                "event": "azure.pricing.fetch_failed",
+                "service": "Database",
+                "db_type": db_type,
+                "region": region,
+                "error": str(e)
+            }))
+            azure_breaker.record_failure()
+            return []

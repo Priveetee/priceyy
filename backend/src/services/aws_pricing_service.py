@@ -1,75 +1,53 @@
-import boto3
+import httpx
+import logging
 import json
-from typing import List, Dict
+from src.services.retry_service import CircuitBreaker, retry_with_backoff
+
+logger = logging.getLogger(__name__)
+
+aws_breaker = CircuitBreaker("aws-pricing-api", failure_threshold=5, timeout=60)
 
 class AWSPricingService:
-    
-    def __init__(self, region: str = 'us-east-1'):
-        self.client = boto3.client('pricing', region_name=region)
-    
-    async def fetch_ec2_prices(self, instance_type: str, region: str) -> List[Dict]:
+    @staticmethod
+    async def fetch_ec2_prices(instance_type: str, region: str):
+        async def fetch():
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                url = f"https://pricing.aws.amazon.com/pricing/v2?service=AmazonEC2&instanceType={instance_type}&region={region}"
+                response = await client.get(url)
+                response.raise_for_status()
+                return response.json()
+        
         try:
-            response = self.client.get_products(
-                ServiceCode='AmazonEC2',
-                Filters=[
-                    {'Type': 'TERM_MATCH', 'Field': 'instanceType', 'Value': instance_type},
-                    {'Type': 'TERM_MATCH', 'Field': 'location', 'Value': region},
-                    {'Type': 'TERM_MATCH', 'Field': 'operatingSystem', 'Value': 'Linux'},
-                    {'Type': 'TERM_MATCH', 'Field': 'preInstalledSw', 'Value': 'NA'}
-                ],
-                MaxResults=100
-            )
-            
-            prices = []
-            for price_item in response['PriceList']:
-                item = json.loads(price_item)
-                
-                sku = list(item['terms']['OnDemand'].keys())[0]
-                price_data = item['terms']['OnDemand'][sku]
-                price_dimension = list(price_data['priceDimensions'].keys())[0]
-                hourly_price = float(price_data['priceDimensions'][price_dimension]['pricePerUnit']['USD'])
-                
-                prices.append({
-                    'service': 'EC2',
-                    'resource_type': instance_type,
-                    'region': region,
-                    'pricing_model': 'on-demand',
-                    'hourly_price': hourly_price
-                })
-            
-            return prices
+            return await retry_with_backoff(fetch, max_retries=3, backoff=1.0)
         except Exception as e:
-            raise Exception(f"Error fetching AWS pricing: {str(e)}")
+            logger.error(json.dumps({
+                "event": "aws.pricing.fetch_failed",
+                "service": "EC2",
+                "instance_type": instance_type,
+                "region": region,
+                "error": str(e)
+            }))
+            aws_breaker.record_failure()
+            return []
     
-    async def fetch_rds_prices(self, db_type: str, region: str) -> List[Dict]:
+    @staticmethod
+    async def fetch_rds_prices(db_instance_type: str, region: str):
+        async def fetch():
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                url = f"https://pricing.aws.amazon.com/pricing/v2?service=AmazonRDS&dbInstanceType={db_instance_type}&region={region}"
+                response = await client.get(url)
+                response.raise_for_status()
+                return response.json()
+        
         try:
-            response = self.client.get_products(
-                ServiceCode='AmazonRDS',
-                Filters=[
-                    {'Type': 'TERM_MATCH', 'Field': 'databaseEngine', 'Value': 'PostgreSQL'},
-                    {'Type': 'TERM_MATCH', 'Field': 'dbInstanceClass', 'Value': db_type},
-                    {'Type': 'TERM_MATCH', 'Field': 'location', 'Value': region}
-                ],
-                MaxResults=100
-            )
-            
-            prices = []
-            for price_item in response['PriceList']:
-                item = json.loads(price_item)
-                
-                sku = list(item['terms']['OnDemand'].keys())[0]
-                price_data = item['terms']['OnDemand'][sku]
-                price_dimension = list(price_data['priceDimensions'].keys())[0]
-                hourly_price = float(price_data['priceDimensions'][price_dimension]['pricePerUnit']['USD'])
-                
-                prices.append({
-                    'service': 'RDS',
-                    'resource_type': db_type,
-                    'region': region,
-                    'pricing_model': 'on-demand',
-                    'hourly_price': hourly_price
-                })
-            
-            return prices
+            return await retry_with_backoff(fetch, max_retries=3, backoff=1.0)
         except Exception as e:
-            raise Exception(f"Error fetching RDS pricing: {str(e)}")
+            logger.error(json.dumps({
+                "event": "aws.pricing.fetch_failed",
+                "service": "RDS",
+                "instance_type": db_instance_type,
+                "region": region,
+                "error": str(e)
+            }))
+            aws_breaker.record_failure()
+            return []
