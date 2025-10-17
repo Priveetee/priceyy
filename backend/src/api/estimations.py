@@ -8,7 +8,7 @@ from src.schemas import CalculationRequest, CalculationResponse, ServiceCostCalc
 from src.services.pricing_service import PricingService
 from src.services.data_transfer_service import DataTransferService
 from src.services.override_service import OverrideService
-from src.models.estimation import Estimation, EstimationService
+from src.models.estimation import Estimation, EstimationService, EstimationVersion
 from src.models.pricing import Pricing
 from src.exceptions import EstimationNotFoundError
 from src.rate_limit import limiter
@@ -181,6 +181,27 @@ async def save_estimation(
     
     return db_estimation
 
+@router.get("")
+@limiter.limit("50/minute")
+async def list_estimations(
+    request: Request,
+    db: Session = Depends(get_db),
+    user_id: str = Depends(get_current_user),
+    limit: int = 10,
+    offset: int = 0
+):
+    total = db.query(Estimation).filter(Estimation.user_id == user_id).count()
+    estimations = db.query(Estimation).filter(
+        Estimation.user_id == user_id
+    ).order_by(Estimation.created_at.desc()).limit(limit).offset(offset).all()
+    
+    return {
+        "total": total,
+        "limit": limit,
+        "offset": offset,
+        "items": estimations
+    }
+
 @router.get("/{estimation_id}", response_model=EstimationResponse)
 @limiter.limit("50/minute")
 async def get_estimation(
@@ -198,6 +219,116 @@ async def get_estimation(
         raise EstimationNotFoundError(str(estimation_id))
     
     return estimation
+
+@router.delete("/{estimation_id}")
+@limiter.limit("30/minute")
+async def delete_estimation(
+    request: Request,
+    estimation_id: UUID,
+    db: Session = Depends(get_db),
+    user_id: str = Depends(get_current_user)
+):
+    estimation = db.query(Estimation).filter(
+        Estimation.id == estimation_id,
+        Estimation.user_id == user_id
+    ).first()
+    
+    if not estimation:
+        raise EstimationNotFoundError(str(estimation_id))
+    
+    db.query(EstimationVersion).filter(
+        EstimationVersion.estimation_id == estimation_id
+    ).delete()
+    
+    db.delete(estimation)
+    db.commit()
+    
+    return {"status": "ok", "message": f"Estimation {estimation_id} deleted"}
+
+@router.get("/{estimation_id}/history")
+@limiter.limit("50/minute")
+async def get_estimation_history(
+    request: Request,
+    estimation_id: UUID,
+    db: Session = Depends(get_db),
+    user_id: str = Depends(get_current_user)
+):
+    estimation = db.query(Estimation).filter(
+        Estimation.id == estimation_id,
+        Estimation.user_id == user_id
+    ).first()
+    
+    if not estimation:
+        raise EstimationNotFoundError(str(estimation_id))
+    
+    versions = db.query(EstimationVersion).filter(
+        EstimationVersion.estimation_id == estimation_id
+    ).order_by(EstimationVersion.version_number.desc()).all()
+    
+    return {
+        "estimation_id": str(estimation_id),
+        "current": estimation,
+        "versions": versions,
+        "total_versions": len(versions)
+    }
+
+@router.patch("/{estimation_id}")
+@limiter.limit("20/minute")
+async def update_estimation(
+    request: Request,
+    estimation_id: UUID,
+    data: dict = Body(...),
+    db: Session = Depends(get_db),
+    user_id: str = Depends(get_current_user)
+):
+    estimation = db.query(Estimation).filter(
+        Estimation.id == estimation_id,
+        Estimation.user_id == user_id
+    ).first()
+    
+    if not estimation:
+        raise EstimationNotFoundError(str(estimation_id))
+    
+    version_number = db.query(EstimationVersion).filter(
+        EstimationVersion.estimation_id == estimation_id
+    ).count() + 1
+    
+    snapshot = {
+        "name": estimation.name,
+        "provider": estimation.provider,
+        "total_monthly_cost": estimation.total_monthly_cost,
+        "total_annual_cost": estimation.total_annual_cost,
+        "data": estimation.data
+    }
+    
+    version = EstimationVersion(
+        estimation_id=estimation_id,
+        version_number=version_number,
+        changes_description=data.get("changes_description", "Update"),
+        snapshot=snapshot
+    )
+    db.add(version)
+    
+    if "name" in data:
+        estimation.name = data["name"]
+    if "total_monthly_cost" in data:
+        estimation.total_monthly_cost = data["total_monthly_cost"]
+    if "total_annual_cost" in data:
+        estimation.total_annual_cost = data["total_annual_cost"]
+    if "data" in data:
+        estimation.data = data["data"]
+    if "notes" in data:
+        estimation.notes = data["notes"]
+    
+    estimation.updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(estimation)
+    
+    return {
+        "status": "ok",
+        "message": f"Estimation updated (version {version_number})",
+        "estimation": estimation
+    }
 
 @router.post("/override-price")
 @limiter.limit("20/minute")
