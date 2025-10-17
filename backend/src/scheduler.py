@@ -3,6 +3,7 @@ from src.services.aws_pricing_service import AWSPricingService
 from src.services.azure_pricing_service import AzurePricingService
 from src.services.pricing_service import PricingService
 from src.database import SessionLocal
+from src.models.pricing import Pricing
 from datetime import datetime
 import asyncio
 import logging
@@ -22,58 +23,63 @@ async def refresh_all_prices():
         aws_service = AWSPricingService()
         azure_service = AzurePricingService()
         
-        instances_to_fetch = [
-            ('t3.large', 'EU (Ireland)', 'eu-west-1'),
-            ('t3.xlarge', 'EU (Ireland)', 'eu-west-1'),
-            ('m5.2xlarge', 'EU (Ireland)', 'eu-west-1'),
-        ]
+        aws_prices = db.query(Pricing).filter(Pricing.provider == 'aws').all()
+        aws_by_type = {}
+        for price in aws_prices:
+            key = (price.resource_type, price.region)
+            if key not in aws_by_type:
+                aws_by_type[key] = price
         
         aws_count = 0
-        for instance_type, aws_region, db_region in instances_to_fetch:
+        for (resource_type, region), price_obj in aws_by_type.items():
             try:
-                prices = await aws_service.fetch_ec2_prices(instance_type, aws_region)
+                prices = await aws_service.fetch_ec2_prices(resource_type, region)
                 for price in prices:
                     PricingService.update_price_if_changed(
                         db=db,
                         provider='aws',
-                        service_name=price['service'],
-                        resource_type=price['resource_type'],
-                        region=db_region,
-                        pricing_model=price['pricing_model'],
-                        new_hourly_price=price['hourly_price']
+                        service_name=price.get('service', 'EC2'),
+                        resource_type=price.get('resource_type', resource_type),
+                        region=region,
+                        pricing_model=price.get('pricing_model', 'on-demand'),
+                        new_hourly_price=price.get('hourly_price', 0.0)
                     )
                     aws_count += 1
             except Exception as e:
                 logger.error(json.dumps({
                     "event": "scheduler.aws_fetch_error",
-                    "instance_type": instance_type,
+                    "resource_type": resource_type,
+                    "region": region,
                     "error": str(e)
                 }))
         
-        vms_to_fetch = [
-            ('Standard_D4s_v3', 'westeurope'),
-            ('Standard_D8s_v3', 'westeurope'),
-        ]
+        azure_prices = db.query(Pricing).filter(Pricing.provider == 'azure').all()
+        azure_by_type = {}
+        for price in azure_prices:
+            key = (price.resource_type, price.region)
+            if key not in azure_by_type:
+                azure_by_type[key] = price
         
         azure_count = 0
-        for vm_type, region in vms_to_fetch:
+        for (resource_type, region), price_obj in azure_by_type.items():
             try:
-                prices = await azure_service.fetch_vm_prices(vm_type, region)
+                prices = await azure_service.fetch_vm_prices(resource_type, region)
                 for price in prices:
                     PricingService.update_price_if_changed(
                         db=db,
                         provider='azure',
-                        service_name=price['service'],
-                        resource_type=price['resource_type'],
+                        service_name=price.get('service', 'VirtualMachines'),
+                        resource_type=price.get('resource_type', resource_type),
                         region=region,
-                        pricing_model=price['pricing_model'],
-                        new_hourly_price=price['hourly_price']
+                        pricing_model=price.get('pricing_model', 'on-demand'),
+                        new_hourly_price=price.get('hourly_price', 0.0)
                     )
                     azure_count += 1
             except Exception as e:
                 logger.error(json.dumps({
                     "event": "scheduler.azure_fetch_error",
-                    "vm_type": vm_type,
+                    "resource_type": resource_type,
+                    "region": region,
                     "error": str(e)
                 }))
         
