@@ -14,7 +14,9 @@ from src.api.monitoring import router as monitoring_router
 from src.exceptions import PriceyException
 from src.rate_limit import limiter, rate_limit_exceeded_handler
 from src.middleware.monitoring import monitoring_middleware
-from src.logging_config import setup_logging, CorrelationIdFilter
+from src.middleware.size_limits import size_limit_middleware
+from src.logging_config import setup_logging
+from src.services.health_service import HealthService
 from slowapi.errors import RateLimitExceeded
 
 setup_logging()
@@ -37,11 +39,11 @@ audit_logger.setLevel(logging.INFO)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
-    init_redis()
+    await init_redis()
     schedule_pricing_refresh()
     logger.info(json.dumps({"event": "application.startup", "status": "ok"}))
     yield
-    close_redis()
+    await close_redis()
     shutdown_scheduler()
     logger.info(json.dumps({"event": "application.shutdown", "status": "ok"}))
 
@@ -55,8 +57,15 @@ app = FastAPI(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
 
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000", "https://yourdomain.com"],
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PATCH", "DELETE"],
+    allow_headers=["Content-Type", "Authorization"],
+)
 
+app.middleware("http")(size_limit_middleware)
 app.middleware("http")(monitoring_middleware)
 
 app.include_router(api_router, prefix="/api")
@@ -90,9 +99,11 @@ async def health():
 
 @app.get("/ready")
 async def ready():
-    from src.services.alerting_service import AlertingService
-    alerts = AlertingService.check_health()
-    return {"status": "ok", "alerts": alerts if alerts else []}
+    health = await HealthService.check_all()
+    if health["status"] == "ok":
+        return health
+    else:
+        return JSONResponse(status_code=503, content=health)
 
 if __name__ == "__main__":
     import uvicorn
