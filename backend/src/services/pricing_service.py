@@ -6,12 +6,12 @@ from src.redis_client import redis_client
 from src.services.override_service import OverrideService
 from src.exceptions import PriceNotFoundError
 import json
-from typing import Optional
+from typing import Optional, Tuple
 
 class PricingService:
 
     @staticmethod
-    def get_price_with_validation(
+    def get_price_with_full_validation(
         db: Session,
         provider: str,
         service_name: str,
@@ -19,7 +19,7 @@ class PricingService:
         region: str,
         pricing_model: str,
         session_id: Optional[str] = None
-    ) -> float:
+    ) -> Tuple[float, Pricing]:
         cache_key = f"pricing:{provider}:{service_name}:{resource_type}:{region}:{pricing_model}"
 
         cached_price = None
@@ -43,7 +43,7 @@ class PricingService:
             hourly_price = db_price_obj.hourly_price
         else:
             from src.services.pricing_fallback_service import PricingFallbackService
-            hourly_price, _ = PricingFallbackService.get_price_or_fallback(
+            hourly_price, db_price_obj = PricingFallbackService.get_price_or_fallback(
                 db, provider, service_name, resource_type, region, pricing_model
             )
 
@@ -67,7 +67,7 @@ class PricingService:
             if override_price is not None:
                 final_price = override_price
 
-        return final_price
+        return final_price, db_price_obj
 
     @staticmethod
     def create_price(db: Session, price: PricingCreate) -> Pricing:

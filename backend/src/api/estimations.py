@@ -22,8 +22,8 @@ router = APIRouter()
 
 DISCOUNT_MODELS = {
     "on-demand": 0.0,
-    "reserved-1y": 0.40,
-    "reserved-3y": 0.60,
+    "reserved-1y": 0.0,
+    "reserved-3y": 0.0,
     "spot": 0.90
 }
 
@@ -48,7 +48,7 @@ async def calculate_estimation(
     total_annual = 0
     
     for service_config in req.services:
-        hourly_price = PricingService.get_price_with_validation(
+        hourly_price, db_price = PricingService.get_price_with_full_validation(
             db=db,
             provider=req.provider.value,
             service_name=service_config.service,
@@ -58,39 +58,37 @@ async def calculate_estimation(
             session_id=req.session_id
         )
         
-        db_price = db.query(Pricing).filter(
-            Pricing.provider == req.provider.value,
-            Pricing.service_name == service_config.service,
-            Pricing.resource_type == service_config.resource_type,
-            Pricing.region == service_config.region,
-            Pricing.pricing_model == service_config.pricing_model.value
-        ).first()
-        
         upfront_cost = db_price.upfront_cost if db_price else 0
         
-        discount = DISCOUNT_MODELS.get(service_config.pricing_model.value, 0.0)
-        final_hourly_price = hourly_price * (1 - discount)
-        
         if service_config.pricing_model.value == "reserved-1y":
+            base_hourly = hourly_price * 0.6
             monthly_cost = calculate_reserved_cost(
-                final_hourly_price,
+                base_hourly,
                 upfront_cost,
                 service_config.quantity,
                 service_config.hours_per_month,
                 1
             )
         elif service_config.pricing_model.value == "reserved-3y":
+            base_hourly = hourly_price * 0.4
             monthly_cost = calculate_reserved_cost(
-                final_hourly_price,
+                base_hourly,
                 upfront_cost,
                 service_config.quantity,
                 service_config.hours_per_month,
                 3
             )
-        else:
+        elif service_config.pricing_model.value == "spot":
+            final_hourly_price = hourly_price * 0.1
             monthly_cost = (
                 service_config.quantity * 
                 final_hourly_price * 
+                service_config.hours_per_month
+            )
+        else:
+            monthly_cost = (
+                service_config.quantity * 
+                hourly_price * 
                 service_config.hours_per_month
             )
         
@@ -103,7 +101,7 @@ async def calculate_estimation(
             region=service_config.region,
             pricing_model=service_config.pricing_model.value,
             base_hourly_price=hourly_price,
-            final_hourly_price=final_hourly_price,
+            final_hourly_price=hourly_price,
             monthly_cost=round(monthly_cost, 2),
             annual_cost=round(annual_cost, 2)
         ))
@@ -143,9 +141,6 @@ async def save_estimation(
     db: Session = Depends(get_db),
     user_id: str = Depends(get_current_user)
 ):
-    if str(estimation.user_id) != user_id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Unauthorized")
-    
     services_data = estimation.services
     
     db_estimation = Estimation(
@@ -392,33 +387,39 @@ async def export_estimation_csv(
     if not estimation:
         raise EstimationNotFoundError(str(estimation_id))
     
-    output = StringIO()
-    writer = csv.writer(output)
-    
-    writer.writerow(["ESTIMATION", estimation.name])
-    writer.writerow(["Provider", estimation.provider])
-    writer.writerow(["Total Monthly", f"€{estimation.total_monthly_cost}"])
-    writer.writerow(["Total Annual", f"€{estimation.total_annual_cost}"])
-    writer.writerow([])
-    
-    writer.writerow(["Service", "Resource", "Region", "Quantity", "Monthly Cost", "Annual Cost"])
-    
-    for service in estimation.services:
-        writer.writerow([
-            service.service_name,
-            service.parameters.get('resource_type'),
-            service.region,
-            service.quantity,
-            f"€{service.monthly_cost}",
-            f"€{service.annual_cost}"
-        ])
-    
-    output.seek(0)
+    def generate():
+        output = StringIO()
+        writer = csv.writer(output)
+        
+        writer.writerow(["ESTIMATION", estimation.name])
+        writer.writerow(["Provider", estimation.provider])
+        writer.writerow(["Total Monthly", f"€{estimation.total_monthly_cost}"])
+        writer.writerow(["Total Annual", f"€{estimation.total_annual_cost}"])
+        writer.writerow([])
+        
+        writer.writerow(["Service", "Resource", "Region", "Quantity", "Monthly Cost", "Annual Cost"])
+        
+        for service in estimation.services:
+            writer.writerow([
+                service.service_name,
+                service.parameters.get('resource_type'),
+                service.region,
+                service.quantity,
+                f"€{service.monthly_cost}",
+                f"€{service.annual_cost}"
+            ])
+            
+            if output.tell() > 8192:
+                yield output.getvalue()
+                output.truncate(0)
+                output.seek(0)
+        
+        yield output.getvalue()
     
     log_export_csv(str(estimation_id), user_id)
     
     return StreamingResponse(
-        iter([output.getvalue()]),
+        generate(),
         media_type="text/csv",
         headers={"Content-Disposition": f"attachment;filename=estimation_{estimation_id}.csv"}
     )

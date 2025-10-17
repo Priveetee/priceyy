@@ -14,14 +14,9 @@ class PricingFallbackService:
         resource_type: str,
         region: str,
         pricing_model: str
-    ) -> tuple[float, bool]:
-        """
-        Récupère le prix, sinon utilise fallback conservative.
+    ) -> tuple[float, Pricing | None]:
         
-        Returns: (price, is_fallback)
-        """
-        
-        price = db.query(Pricing).filter(
+        price_obj = db.query(Pricing).filter(
             Pricing.provider == provider,
             Pricing.service_name == service_name,
             Pricing.resource_type == resource_type,
@@ -29,8 +24,8 @@ class PricingFallbackService:
             Pricing.pricing_model == pricing_model
         ).first()
         
-        if price:
-            return price.hourly_price, False
+        if price_obj:
+            return price_obj.hourly_price, price_obj
         
         logger.warning(
             f"FALLBACK: Price not found for {provider}/{service_name}/{resource_type}/{region}/{pricing_model}"
@@ -40,7 +35,7 @@ class PricingFallbackService:
             db, provider, service_name, resource_type, region, pricing_model
         )
         
-        return fallback_price, True
+        return fallback_price, None
     
     @staticmethod
     def _estimate_fallback_price(
@@ -51,12 +46,6 @@ class PricingFallbackService:
         region: str,
         pricing_model: str
     ) -> float:
-        """
-        Estime un prix conservatif basé sur:
-        1. Même service, autre région
-        2. Même pricing model
-        3. Ajoute 20% de buffer
-        """
         
         similar_price = db.query(Pricing).filter(
             Pricing.provider == provider,
@@ -73,6 +62,8 @@ class PricingFallbackService:
         default_prices = {
             ("aws", "EC2", "on-demand"): 0.15,
             ("aws", "EC2", "reserved-3y"): 0.06,
+            ("aws", "RDS", "on-demand"): 0.50,
+            ("aws", "RDS", "reserved-3y"): 0.20,
             ("azure", "VirtualMachines", "on-demand"): 0.50,
         }
         

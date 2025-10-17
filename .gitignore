@@ -53,3 +53,4 @@ docker-compose.override.yml
 
 # Logs
 backend/logs/audit.logbackend/logs/audit.log
+backend/logs/audit.log

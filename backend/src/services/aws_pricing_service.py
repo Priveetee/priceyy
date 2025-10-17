@@ -10,6 +10,15 @@ aws_breaker = CircuitBreaker("aws-pricing-api", failure_threshold=5, timeout=60)
 class AWSPricingService:
     @staticmethod
     async def fetch_ec2_prices(instance_type: str, region: str):
+        if aws_breaker.is_open():
+            logger.error(json.dumps({
+                "event": "aws.pricing.circuit_breaker_open",
+                "service": "EC2",
+                "instance_type": instance_type,
+                "region": region
+            }))
+            return []
+        
         async def fetch():
             async with httpx.AsyncClient(timeout=10.0) as client:
                 url = f"https://pricing.aws.amazon.com/pricing/v2?service=AmazonEC2&instanceType={instance_type}&region={region}"
@@ -18,7 +27,9 @@ class AWSPricingService:
                 return response.json()
         
         try:
-            return await retry_with_backoff(fetch, max_retries=3, backoff=1.0)
+            result = await retry_with_backoff(fetch, max_retries=3, backoff=1.0)
+            aws_breaker.record_success()
+            return result
         except Exception as e:
             logger.error(json.dumps({
                 "event": "aws.pricing.fetch_failed",
@@ -32,6 +43,15 @@ class AWSPricingService:
     
     @staticmethod
     async def fetch_rds_prices(db_instance_type: str, region: str):
+        if aws_breaker.is_open():
+            logger.error(json.dumps({
+                "event": "aws.pricing.circuit_breaker_open",
+                "service": "RDS",
+                "instance_type": db_instance_type,
+                "region": region
+            }))
+            return []
+        
         async def fetch():
             async with httpx.AsyncClient(timeout=10.0) as client:
                 url = f"https://pricing.aws.amazon.com/pricing/v2?service=AmazonRDS&dbInstanceType={db_instance_type}&region={region}"
@@ -40,7 +60,9 @@ class AWSPricingService:
                 return response.json()
         
         try:
-            return await retry_with_backoff(fetch, max_retries=3, backoff=1.0)
+            result = await retry_with_backoff(fetch, max_retries=3, backoff=1.0)
+            aws_breaker.record_success()
+            return result
         except Exception as e:
             logger.error(json.dumps({
                 "event": "aws.pricing.fetch_failed",
