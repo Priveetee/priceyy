@@ -16,3 +16,4 @@ alembic==1.13.1
 python-jose[cryptography]==3.4.0
 passlib[bcrypt]==1.7.4
 python-multipart==0.0.18
+python-json-logger==2.0.7
