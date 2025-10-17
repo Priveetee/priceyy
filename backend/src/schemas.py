@@ -1,98 +1,47 @@
 from pydantic import BaseModel, Field, field_validator
-from typing import Optional, List
-from datetime import datetime
+from typing import List, Optional, Dict
+from enum import Enum
 from uuid import UUID
-from src.enums import Provider, PricingModel
+from datetime import datetime
 
-class PricingBase(BaseModel):
-    provider: Provider
-    service_name: str
-    resource_type: str
-    region: str
-    pricing_model: PricingModel
-    hourly_price: float = Field(gt=0, decimal_places=6)
-    yearly_commitment_discount: Optional[float] = Field(None, ge=0, le=1)
-    currency: str = "EUR"
-    source: Optional[str] = None
+class PricingModelEnum(str, Enum):
+    ON_DEMAND = "on-demand"
+    RESERVED_1Y = "reserved-1y"
+    RESERVED_3Y = "reserved-3y"
+    SPOT = "spot"
 
-class PricingCreate(PricingBase):
-    pass
-
-class PricingResponse(PricingBase):
-    id: UUID
-    last_updated: datetime
-    created_at: datetime
-    
-    class Config:
-        from_attributes = True
-
-class EstimationServiceBase(BaseModel):
-    service_name: str
-    region: str
-    quantity: int = Field(gt=0, le=100000)
-    monthly_cost: float = Field(ge=0)
-    annual_cost: float = Field(ge=0)
-    parameters: dict
-
-class EstimationServiceCreate(EstimationServiceBase):
-    pass
-
-class EstimationServiceResponse(EstimationServiceBase):
-    id: UUID
-    estimation_id: UUID
-    created_at: datetime
-    
-    class Config:
-        from_attributes = True
-
-class EstimationBase(BaseModel):
-    name: str = Field(min_length=1, max_length=255)
-    provider: Provider
-    notes: Optional[str] = Field(None, max_length=1000)
-
-class EstimationCreate(EstimationBase):
-    user_id: Optional[str] = Field(None, max_length=255)
-    data: dict
-    services: List[EstimationServiceCreate]
-
-class EstimationResponse(EstimationBase):
-    id: UUID
-    user_id: Optional[str]
-    status: str
-    total_monthly_cost: float = Field(ge=0)
-    total_annual_cost: float = Field(ge=0)
-    created_at: datetime
-    updated_at: datetime
-    services: List[EstimationServiceResponse]
-    
-    class Config:
-        from_attributes = True
+class ProviderEnum(str, Enum):
+    AWS = "aws"
+    AZURE = "azure"
+    GCP = "gcp"
 
 class ServiceConfig(BaseModel):
     service: str
     resource_type: str
-    quantity: int = Field(gt=0, le=100000)
+    quantity: int
     region: str
-    pricing_model: PricingModel
-    hours_per_month: int = Field(default=730, gt=0, le=8760)
-    
-    @field_validator('hours_per_month')
-    def validate_hours(cls, v):
-        if v < 1 or v > 8760:
-            raise ValueError('hours_per_month must be between 1 and 8760')
-        return v
+    pricing_model: PricingModelEnum
+    hours_per_month: int = 730
 
 class DataTransferConfig(BaseModel):
     from_region: str
     to_region: str
-    transfer_type: str = "internet-out"
-    data_transfer_gb: float = Field(ge=0, le=1000000)
+    transfer_type: str
+    data_transfer_gb: float
 
 class CalculationRequest(BaseModel):
-    provider: Provider
-    services: List[ServiceConfig] = Field(min_items=1)
-    session_id: Optional[str] = Field(None, max_length=255)
-    data_transfers: Optional[List[DataTransferConfig]] = Field(default_factory=list)
+    provider: ProviderEnum
+    services: List[ServiceConfig]
+    data_transfers: Optional[List[DataTransferConfig]] = None
+    session_id: Optional[str] = None
+    discount_multipliers: Optional[Dict[str, float]] = Field(
+        default={
+            "reserved-1y": 0.6,
+            "reserved-3y": 0.4,
+            "spot": 0.1
+        },
+        description="User-defined discount multipliers for pricing models"
+    )
 
 class ServiceCostCalculation(BaseModel):
     service: str
@@ -110,15 +59,55 @@ class CalculationResponse(BaseModel):
     total_annual_cost: float
     services_breakdown: List[ServiceCostCalculation]
 
-class UserPriceOverrideCreate(BaseModel):
-    session_id: str = Field(min_length=1, max_length=255)
-    pricing_id: UUID
-    custom_hourly_price: float = Field(gt=0, decimal_places=6)
-    reason: Optional[str] = Field(None, max_length=500)
+class EstimationServiceCreate(BaseModel):
+    service_name: str
+    region: str
+    quantity: int
+    monthly_cost: float
+    annual_cost: float
+    parameters: dict
 
-class UserPriceOverrideResponse(UserPriceOverrideCreate):
+class EstimationCreate(BaseModel):
+    provider: ProviderEnum
+    name: str
+    services: List[EstimationServiceCreate]
+    data: dict
+    notes: Optional[str] = None
+
+class EstimationResponse(BaseModel):
     id: UUID
+    user_id: UUID
+    provider: str
+    name: str
+    status: str
+    total_monthly_cost: float
+    total_annual_cost: float
     created_at: datetime
-    
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class PricingCreate(BaseModel):
+    provider: str
+    service_name: str
+    resource_type: str
+    region: str
+    pricing_model: str
+    hourly_price: float
+    upfront_cost: Optional[float] = None
+    currency: str = "EUR"
+
+class PricingResponse(BaseModel):
+    id: UUID
+    provider: str
+    service_name: str
+    resource_type: str
+    region: str
+    pricing_model: str
+    hourly_price: float
+    upfront_cost: Optional[float] = None
+    currency: str
+
     class Config:
         from_attributes = True

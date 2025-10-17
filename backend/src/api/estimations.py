@@ -20,13 +20,6 @@ from io import StringIO
 
 router = APIRouter()
 
-DISCOUNT_MODELS = {
-    "on-demand": 0.0,
-    "reserved-1y": 0.0,
-    "reserved-3y": 0.0,
-    "spot": 0.90
-}
-
 def calculate_reserved_cost(hourly_price: float, upfront_cost: float, quantity: int, hours_per_month: int, commitment_years: int) -> float:
     if upfront_cost and upfront_cost > 0:
         monthly_upfront = (upfront_cost / (commitment_years * 12)) / quantity
@@ -47,6 +40,13 @@ async def calculate_estimation(
     total_monthly = 0
     total_annual = 0
     
+    # Use user-provided discount multipliers or defaults
+    discount_multipliers = req.discount_multipliers or {
+        "reserved-1y": 0.6,
+        "reserved-3y": 0.4,
+        "spot": 0.1
+    }
+    
     for service_config in req.services:
         hourly_price, db_price = PricingService.get_price_with_full_validation(
             db=db,
@@ -61,7 +61,8 @@ async def calculate_estimation(
         upfront_cost = db_price.upfront_cost if db_price else 0
         
         if service_config.pricing_model.value == "reserved-1y":
-            base_hourly = hourly_price * 0.6
+            discount = discount_multipliers.get("reserved-1y", 0.6)
+            base_hourly = hourly_price * discount
             monthly_cost = calculate_reserved_cost(
                 base_hourly,
                 upfront_cost,
@@ -70,7 +71,8 @@ async def calculate_estimation(
                 1
             )
         elif service_config.pricing_model.value == "reserved-3y":
-            base_hourly = hourly_price * 0.4
+            discount = discount_multipliers.get("reserved-3y", 0.4)
+            base_hourly = hourly_price * discount
             monthly_cost = calculate_reserved_cost(
                 base_hourly,
                 upfront_cost,
@@ -79,7 +81,8 @@ async def calculate_estimation(
                 3
             )
         elif service_config.pricing_model.value == "spot":
-            final_hourly_price = hourly_price * 0.1
+            discount = discount_multipliers.get("spot", 0.1)
+            final_hourly_price = hourly_price * discount
             monthly_cost = (
                 service_config.quantity * 
                 final_hourly_price * 
