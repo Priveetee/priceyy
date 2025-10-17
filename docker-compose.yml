@@ -16,6 +16,23 @@ services:
       timeout: 5s
       retries: 5
 
+  postgres-test:
+    image: postgres:15-alpine
+    container_name: priceyy-postgres-test
+    environment:
+      POSTGRES_USER: priceyy
+      POSTGRES_PASSWORD: priceyy
+      POSTGRES_DB: priceyy_test
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres_test_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U priceyy"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   redis:
     image: redis:7-alpine
     container_name: priceyy-redis
@@ -62,3 +79,4 @@ services:
 volumes:
   postgres_data:
   redis_data:
+  postgres_test_data:

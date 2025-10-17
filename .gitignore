@@ -36,6 +36,7 @@ instance/
 .tox/
 htmlcov/
 *.so
+backend/.coverage
 
 # Node
 node_modules/
@@ -52,5 +53,4 @@ yarn-error.log*
 docker-compose.override.yml
 
 # Logs
-backend/logs/audit.logbackend/logs/audit.log
 backend/logs/audit.log
