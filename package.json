@@ -1,12 +1,22 @@
 {
   "dependencies": {
+    "@radix-ui/react-slot": "^1.2.3",
     "autoprefixer": "^10.4.21",
     "axios": "^1.12.2",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
     "gsap": "^3.13.0",
+    "lucide-react": "^0.546.0",
     "motion": "^12.23.24",
+    "not-a-toast": "^1.1.5",
     "postcss": "^8.5.6",
     "react-router-dom": "^7.9.4",
+    "tailwind-merge": "^3.3.1",
     "tailwindcss": "^4.1.14",
+    "tailwindcss-animate": "^1.0.7",
     "zustand": "^5.0.8"
+  },
+  "devDependencies": {
+    "@types/node": "^24.8.1"
   }
 }

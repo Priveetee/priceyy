@@ -7,6 +7,7 @@
         "axios": "^1.12.2",
         "gsap": "^3.13.0",
         "motion": "^12.23.24",
+        "not-a-toast": "^1.1.5",
         "postcss": "^8.5.6",
         "react-router-dom": "^7.9.4",
         "tailwindcss": "^4.1.14",
@@ -90,6 +91,8 @@
     "node-releases": ["node-releases@2.0.25", "", {}, "sha512-4auku8B/vw5psvTiiN9j1dAOsXvMoGqJuKJcR+dTdqiXEK20mMTk1UEo3HS16LeGQsVG6+qKTPM9u/qQ2LqATA=="],
 
     "normalize-range": ["normalize-range@0.1.2", "", {}, "sha512-bdok/XvKII3nUpklnV6P2hxtMNrCboOjAcyBuQnWEhO665FwrSNRxU+AqpsyvO6LgGYPspN+lu5CLtw4jPRKNA=="],
+
+    "not-a-toast": ["not-a-toast@1.1.5", "", {}, "sha512-4zrhOKd8U2yywr4Aas2AHJwhImyR8dL/gVPb0+LcPEBOpr8jdanWqtv5r3CAawndQikEUkTfch6G8aMJiaTv/g=="],
 
     "picocolors": ["picocolors@1.1.1", "", {}, "sha512-xceH2snhtb5M9liqDsmEw56le376mTZkEX/jEb/RxNFyegNul7eNslCXP9FDj/Lcu0X8KEyMceP2ntpaHrDEVA=="],
 
