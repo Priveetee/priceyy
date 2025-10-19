@@ -21,12 +21,22 @@ from io import StringIO
 router = APIRouter()
 
 def calculate_reserved_cost(hourly_price: float, upfront_cost: float, quantity: int, hours_per_month: int, commitment_years: int) -> float:
+    """
+    Calculate reserved instance cost with proper upfront cost handling.
+    
+    FIXED: 
+    - Remove incorrect division by quantity for upfront cost
+    - Add quantity multiplication for hourly cost
+    """
     if upfront_cost and upfront_cost > 0:
-        monthly_upfront = (upfront_cost / (commitment_years * 12)) / quantity
-        monthly_hourly = hourly_price * hours_per_month
+        # Monthly portion of upfront cost (not divided by quantity - upfront covers all instances)
+        monthly_upfront = upfront_cost / (commitment_years * 12)
+        # Monthly hourly cost for all instances
+        monthly_hourly = hourly_price * hours_per_month * quantity
         return monthly_upfront + monthly_hourly
     else:
-        return hourly_price * hours_per_month
+        # No upfront, just hourly cost for all instances
+        return hourly_price * hours_per_month * quantity
 
 @router.post("/calculate", response_model=CalculationResponse)
 @limiter.limit("5000/minute")
@@ -60,11 +70,12 @@ async def calculate_estimation(
         
         upfront_cost = db_price.upfront_cost if db_price else 0
         
+        # Calculate final hourly price with discount and monthly cost
         if service_config.pricing_model.value == "reserved-1y":
             discount = discount_multipliers.get("reserved-1y", 0.6)
-            base_hourly = hourly_price * discount
+            final_hourly_price = hourly_price * discount
             monthly_cost = calculate_reserved_cost(
-                base_hourly,
+                final_hourly_price,
                 upfront_cost,
                 service_config.quantity,
                 service_config.hours_per_month,
@@ -72,9 +83,9 @@ async def calculate_estimation(
             )
         elif service_config.pricing_model.value == "reserved-3y":
             discount = discount_multipliers.get("reserved-3y", 0.4)
-            base_hourly = hourly_price * discount
+            final_hourly_price = hourly_price * discount
             monthly_cost = calculate_reserved_cost(
-                base_hourly,
+                final_hourly_price,
                 upfront_cost,
                 service_config.quantity,
                 service_config.hours_per_month,
@@ -88,7 +99,8 @@ async def calculate_estimation(
                 final_hourly_price * 
                 service_config.hours_per_month
             )
-        else:
+        else:  # on-demand
+            final_hourly_price = hourly_price
             monthly_cost = (
                 service_config.quantity * 
                 hourly_price * 
@@ -104,7 +116,7 @@ async def calculate_estimation(
             region=service_config.region,
             pricing_model=service_config.pricing_model.value,
             base_hourly_price=hourly_price,
-            final_hourly_price=hourly_price,
+            final_hourly_price=final_hourly_price,  # FIXED: Now shows actual discounted price
             monthly_cost=round(monthly_cost, 2),
             annual_cost=round(annual_cost, 2)
         ))
@@ -112,6 +124,7 @@ async def calculate_estimation(
         total_monthly += monthly_cost
         total_annual += annual_cost
     
+    # Add data transfer costs
     total_data_transfer_cost = 0
     if req.data_transfers:
         for transfer in req.data_transfers:
