@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import Link from "next/link";
 import { SiBruno } from "react-icons/si";
+import { Toaster } from "@/components/ui/sonner";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -27,6 +28,7 @@ export default function RootLayout({
           <SiBruno className="h-8 w-8 text-zinc-300 transition-colors hover:text-white" />
         </Link>
         {children}
+        <Toaster richColors />
       </body>
     </html>
   );
