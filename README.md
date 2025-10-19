@@ -1,3 +1,18 @@
+# Priceyy - Plateforme d'Estimation des Coûts Cloud
+
+**Priceyy** est une application web conçue pour **estimer et comparer les coûts d'infrastructure cloud**.
+
+Voici ce qu'elle permet de faire :
+
+1.  **Calculer les Coûts :** Sélectionnez des services auprès de fournisseurs comme **AWS** et **Azure** (machines virtuelles, stockage, etc.) pour obtenir une estimation des coûts mensuels et annuels.
+2.  **Comparer les Modèles de Tarification :** Visualisez l'impact sur le prix en choisissant différentes options de paiement : "On-Demand" (paiement à l'usage), "Reserved" (engagement de 1 ou 3 ans pour une réduction) ou "Spot" (utilisation de capacité excédentaire pour une forte remise).
+3.  **Sauvegarder et Exporter :** Enregistrez vos estimations pour les consulter plus tard ou exportez-les au format CSV.
+4.  **Maintenir les Prix à Jour :** L'application récupère automatiquement les derniers tarifs des fournisseurs pour garantir des estimations précises.
+
+En résumé, c'est un outil pour vous aider à planifier et optimiser vos dépenses cloud avant de vous engager avec un fournisseur ou une architecture spécifique.
+
+---
+
 # Architecture Logique - Cheminement des Données
 
 ## 1. COUCHE DE DONNÉES
