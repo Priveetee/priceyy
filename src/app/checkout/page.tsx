@@ -82,13 +82,15 @@ export default function CheckoutPage() {
                 </motion.div>
               ))}
               <div className="flex justify-end pt-8">
-                <Button
-                  size="lg"
-                  className="bg-green-600 hover:bg-green-700 text-white"
-                >
-                  <Calculator className="mr-2 h-5 w-5" />
-                  Calculate Total Cost
-                </Button>
+                <Link href="/results" passHref>
+                  <Button
+                    size="lg"
+                    className="bg-green-600 hover:bg-green-700 text-white"
+                  >
+                    <Calculator className="mr-2 h-5 w-5" />
+                    Calculate Total Cost
+                  </Button>
+                </Link>
               </div>
             </div>
           )}
