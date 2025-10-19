@@ -19,6 +19,8 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
+import { useCartStore } from "@/lib/cartStore";
+import Link from "next/link";
 
 interface Resource {
   id: string;
@@ -28,7 +30,7 @@ interface Resource {
 
 export default function HomePage() {
   const [selectedResources, setSelectedResources] = useState<Resource[]>([]);
-  const [cartItems, setCartItems] = useState<Resource[]>([]);
+  const { items: cartItems, addToCart, clearCart } = useCartStore();
 
   const handleAddResource = (resourceName: string) => {
     const newResource: Resource = {
@@ -57,26 +59,12 @@ export default function HomePage() {
 
   const handleClearAll = () => {
     setSelectedResources([]);
-    setCartItems([]);
+    clearCart();
     toast.info("Your estimate has been cleared.");
   };
 
   const handleAddToCart = (resourceToAdd: Resource) => {
-    setCartItems((prevCart) => {
-      const existingItem = prevCart.find(
-        (item) => item.name === resourceToAdd.name,
-      );
-      if (existingItem) {
-        return prevCart.map((item) =>
-          item.name === resourceToAdd.name
-            ? { ...item, count: item.count + resourceToAdd.count }
-            : item,
-        );
-      } else {
-        return [...prevCart, resourceToAdd];
-      }
-    });
-
+    addToCart(resourceToAdd);
     toast.success(
       `Added ${resourceToAdd.count}x "${resourceToAdd.name}" to your estimate.`,
     );
@@ -109,21 +97,21 @@ export default function HomePage() {
             </div>
             <div className="flex items-center gap-4">
               <AddResourceButton onResourceSelect={handleAddResource} />
-
-              <Button
-                variant="outline"
-                size="icon"
-                className="relative border-zinc-700 bg-zinc-900/80 text-zinc-300 hover:bg-zinc-800 hover:text-white"
-                aria-label="View estimate cart"
-              >
-                {totalCartItems > 0 && (
-                  <div className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-xs font-bold text-white">
-                    {displayCount}
-                  </div>
-                )}
-                <ShoppingCart className="h-5 w-5" />
-              </Button>
-
+              <Link href="/checkout" passHref>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="relative border-zinc-700 bg-zinc-900/80 text-zinc-300 hover:bg-zinc-800 hover:text-white"
+                  aria-label="View estimate cart"
+                >
+                  {totalCartItems > 0 && (
+                    <div className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-xs font-bold text-white">
+                      {displayCount}
+                    </div>
+                  )}
+                  <ShoppingCart className="h-5 w-5" />
+                </Button>
+              </Link>
               {(selectedResources.length > 0 || cartItems.length > 0) && (
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
@@ -162,7 +150,6 @@ export default function HomePage() {
               )}
             </div>
           </div>
-
           {selectedResources.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               <AnimatePresence>
