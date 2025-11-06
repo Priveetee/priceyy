@@ -41,7 +41,7 @@ services:
       dockerfile: Dockerfile
     container_name: priceyy-api
     ports:
-      - "8080:8080"
+      - "${API_PORT}:8080"
     environment:
       DATABASE_URL: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}"
     volumes:
