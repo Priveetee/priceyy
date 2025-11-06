@@ -1,5 +1,4 @@
 import httpx
-import pandas as pd
 import json
 from tqdm import tqdm
 import psycopg2
@@ -24,10 +23,9 @@ def find_service_offer_url(service_code):
     response.raise_for_status()
     index_data = response.json()
 
-    publication_date = index_data["publicationDate"]
-
     offer = index_data["offers"][service_code]
     offer_url_path = offer["currentVersionUrl"]
+    publication_date = index_data["publicationDate"]
 
     full_offer_url = f"https://pricing.us-east-1.amazonaws.com{offer_url_path}"
 
@@ -72,45 +70,42 @@ def process_and_load_ec2_prices(offer_file_path):
         print("No offer file to process.")
         return
 
-    print("Streaming and parsing products from offer file...")
+    print("Pass 1: Building map of relevant products...")
+    product_map = {}
+    with open(offer_file_path, "rb") as f:
+        for sku, product in ijson.kvitems(f, "products"):
+            attributes = product.get("attributes", {})
+            if (
+                product.get("productFamily") == "Compute Instance"
+                and "instanceType" in attributes
+                and "location" in attributes
+            ):
+                product_map[sku] = attributes
+
+    print(f"Found {len(product_map)} relevant compute instance products.")
+    print("Pass 2: Processing prices for these products...")
 
     prices_to_insert = []
-
     with open(offer_file_path, "rb") as f:
-        products = ijson.items(f, "products.item")
-
-        product_map = {
-            sku: product
-            for sku, product in products
-            if product.get("productFamily") == "Compute Instance"
-            and "instanceType" in product.get("attributes", {})
-        }
-
-    with open(offer_file_path, "rb") as f:
-        terms = ijson.items(f, "terms.OnDemand.item")
-
-        print(
-            f"Found {len(product_map)} relevant compute instance products. Processing prices..."
-        )
-
-        for sku, term in terms:
+        for sku, term in ijson.kvitems(f, "terms.OnDemand"):
             if sku in product_map:
-                product = product_map[sku]
-                for price_dimension in term["priceDimensions"].values():
-                    if price_dimension["unit"] == "Hrs":
-                        prices_to_insert.append(
-                            {
-                                "provider": "aws",
-                                "service": "ec2",
-                                "resourceType": product["attributes"]["instanceType"],
-                                "region": product["attributes"]["location"],
-                                "priceModel": "on-demand",
-                                "pricePerHour": float(
-                                    price_dimension["pricePerUnit"]["USD"]
-                                ),
-                                "currency": "USD",
-                            }
-                        )
+                product_attributes = product_map[sku]
+                for price_dimension in term.values():
+                    for dim_details in price_dimension["priceDimensions"].values():
+                        if dim_details["unit"] == "Hrs":
+                            prices_to_insert.append(
+                                {
+                                    "provider": "aws",
+                                    "service": "ec2",
+                                    "resourceType": product_attributes["instanceType"],
+                                    "region": product_attributes["location"],
+                                    "priceModel": "on-demand",
+                                    "pricePerHour": float(
+                                        dim_details["pricePerUnit"]["USD"]
+                                    ),
+                                    "currency": "USD",
+                                }
+                            )
 
     print(f"Transformed {len(prices_to_insert)} prices for database insertion.")
     insert_prices_to_db(prices_to_insert)
@@ -118,6 +113,7 @@ def process_and_load_ec2_prices(offer_file_path):
 
 def insert_prices_to_db(prices):
     if not prices:
+        print("No new prices to insert.")
         return
 
     conn = get_db_connection()
