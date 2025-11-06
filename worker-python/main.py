@@ -1,10 +1,11 @@
-import httpx
 import json
-from tqdm import tqdm
-import psycopg2
 import os
 from datetime import datetime, timedelta, timezone
+
+import httpx
 import ijson
+import psycopg2
+from tqdm import tqdm
 
 AWS_PRICING_INDEX_URL = (
     "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/index.json"
@@ -120,12 +121,12 @@ def insert_prices_to_db(prices):
     cursor = conn.cursor()
 
     insert_query = """
-    INSERT INTO "Price" (provider, service, "resourceType", region, "priceModel", "pricePerHour", currency, "lastUpdatedAt")
+    INSERT INTO "prices" (provider, service, resource_type, region, price_model, price_per_hour, currency, last_updated_at)
     VALUES (%s, %s, %s, %s, %s, %s, %s, NOW())
-    ON CONFLICT (provider, "resourceType", region, "priceModel") DO UPDATE SET
-        "pricePerHour" = EXCLUDED."pricePerHour",
+    ON CONFLICT (provider, resource_type, region, price_model) DO UPDATE SET
+        price_per_hour = EXCLUDED.price_per_hour,
         currency = EXCLUDED.currency,
-        "lastUpdatedAt" = NOW();
+        last_updated_at = NOW();
     """
 
     data_to_insert = [
