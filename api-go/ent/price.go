@@ -28,8 +28,10 @@ type Price struct {
 	Region string `json:"region,omitempty"`
 	// PriceModel holds the value of the "price_model" field.
 	PriceModel string `json:"price_model,omitempty"`
-	// PricePerHour holds the value of the "price_per_hour" field.
-	PricePerHour float64 `json:"price_per_hour,omitempty"`
+	// PricePerUnit holds the value of the "price_per_unit" field.
+	PricePerUnit float64 `json:"price_per_unit,omitempty"`
+	// UnitOfMeasure holds the value of the "unit_of_measure" field.
+	UnitOfMeasure string `json:"unit_of_measure,omitempty"`
 	// UpfrontCost holds the value of the "upfront_cost" field.
 	UpfrontCost float64 `json:"upfront_cost,omitempty"`
 	// Currency holds the value of the "currency" field.
@@ -44,9 +46,9 @@ func (*Price) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case price.FieldPricePerHour, price.FieldUpfrontCost:
+		case price.FieldPricePerUnit, price.FieldUpfrontCost:
 			values[i] = new(sql.NullFloat64)
-		case price.FieldProvider, price.FieldService, price.FieldResourceType, price.FieldRegion, price.FieldPriceModel, price.FieldCurrency:
+		case price.FieldProvider, price.FieldService, price.FieldResourceType, price.FieldRegion, price.FieldPriceModel, price.FieldUnitOfMeasure, price.FieldCurrency:
 			values[i] = new(sql.NullString)
 		case price.FieldLastUpdatedAt:
 			values[i] = new(sql.NullTime)
@@ -103,11 +105,17 @@ func (_m *Price) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.PriceModel = value.String
 			}
-		case price.FieldPricePerHour:
+		case price.FieldPricePerUnit:
 			if value, ok := values[i].(*sql.NullFloat64); !ok {
-				return fmt.Errorf("unexpected type %T for field price_per_hour", values[i])
+				return fmt.Errorf("unexpected type %T for field price_per_unit", values[i])
 			} else if value.Valid {
-				_m.PricePerHour = value.Float64
+				_m.PricePerUnit = value.Float64
+			}
+		case price.FieldUnitOfMeasure:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field unit_of_measure", values[i])
+			} else if value.Valid {
+				_m.UnitOfMeasure = value.String
 			}
 		case price.FieldUpfrontCost:
 			if value, ok := values[i].(*sql.NullFloat64); !ok {
@@ -178,8 +186,11 @@ func (_m *Price) String() string {
 	builder.WriteString("price_model=")
 	builder.WriteString(_m.PriceModel)
 	builder.WriteString(", ")
-	builder.WriteString("price_per_hour=")
-	builder.WriteString(fmt.Sprintf("%v", _m.PricePerHour))
+	builder.WriteString("price_per_unit=")
+	builder.WriteString(fmt.Sprintf("%v", _m.PricePerUnit))
+	builder.WriteString(", ")
+	builder.WriteString("unit_of_measure=")
+	builder.WriteString(_m.UnitOfMeasure)
 	builder.WriteString(", ")
 	builder.WriteString("upfront_cost=")
 	builder.WriteString(fmt.Sprintf("%v", _m.UpfrontCost))

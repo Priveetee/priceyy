@@ -17,11 +17,11 @@ func init() {
 	priceFields := schema.Price{}.Fields()
 	_ = priceFields
 	// priceDescCurrency is the schema descriptor for currency field.
-	priceDescCurrency := priceFields[8].Descriptor()
+	priceDescCurrency := priceFields[9].Descriptor()
 	// price.DefaultCurrency holds the default value on creation for the currency field.
 	price.DefaultCurrency = priceDescCurrency.Default.(string)
 	// priceDescLastUpdatedAt is the schema descriptor for last_updated_at field.
-	priceDescLastUpdatedAt := priceFields[9].Descriptor()
+	priceDescLastUpdatedAt := priceFields[10].Descriptor()
 	// price.DefaultLastUpdatedAt holds the default value on creation for the last_updated_at field.
 	price.DefaultLastUpdatedAt = priceDescLastUpdatedAt.Default.(func() time.Time)
 	// price.UpdateDefaultLastUpdatedAt holds the default value on update for the last_updated_at field.

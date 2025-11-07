@@ -16,7 +16,8 @@ var (
 		{Name: "resource_type", Type: field.TypeString},
 		{Name: "region", Type: field.TypeString},
 		{Name: "price_model", Type: field.TypeString},
-		{Name: "price_per_hour", Type: field.TypeFloat64},
+		{Name: "price_per_unit", Type: field.TypeFloat64},
+		{Name: "unit_of_measure", Type: field.TypeString},
 		{Name: "upfront_cost", Type: field.TypeFloat64, Nullable: true},
 		{Name: "currency", Type: field.TypeString, Default: "USD"},
 		{Name: "last_updated_at", Type: field.TypeTime},
@@ -28,9 +29,9 @@ var (
 		PrimaryKey: []*schema.Column{PricesColumns[0]},
 		Indexes: []*schema.Index{
 			{
-				Name:    "price_provider_resource_type_region_price_model",
+				Name:    "price_provider_resource_type_region_price_model_unit_of_measure",
 				Unique:  true,
-				Columns: []*schema.Column{PricesColumns[1], PricesColumns[3], PricesColumns[4], PricesColumns[5]},
+				Columns: []*schema.Column{PricesColumns[1], PricesColumns[3], PricesColumns[4], PricesColumns[5], PricesColumns[7]},
 			},
 		},
 	}

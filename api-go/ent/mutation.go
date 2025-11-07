@@ -39,8 +39,9 @@ type PriceMutation struct {
 	resource_type     *string
 	region            *string
 	price_model       *string
-	price_per_hour    *float64
-	addprice_per_hour *float64
+	price_per_unit    *float64
+	addprice_per_unit *float64
+	unit_of_measure   *string
 	upfront_cost      *float64
 	addupfront_cost   *float64
 	currency          *string
@@ -335,60 +336,96 @@ func (m *PriceMutation) ResetPriceModel() {
 	m.price_model = nil
 }
 
-// SetPricePerHour sets the "price_per_hour" field.
-func (m *PriceMutation) SetPricePerHour(f float64) {
-	m.price_per_hour = &f
-	m.addprice_per_hour = nil
+// SetPricePerUnit sets the "price_per_unit" field.
+func (m *PriceMutation) SetPricePerUnit(f float64) {
+	m.price_per_unit = &f
+	m.addprice_per_unit = nil
 }
 
-// PricePerHour returns the value of the "price_per_hour" field in the mutation.
-func (m *PriceMutation) PricePerHour() (r float64, exists bool) {
-	v := m.price_per_hour
+// PricePerUnit returns the value of the "price_per_unit" field in the mutation.
+func (m *PriceMutation) PricePerUnit() (r float64, exists bool) {
+	v := m.price_per_unit
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// OldPricePerHour returns the old "price_per_hour" field's value of the Price entity.
+// OldPricePerUnit returns the old "price_per_unit" field's value of the Price entity.
 // If the Price object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *PriceMutation) OldPricePerHour(ctx context.Context) (v float64, err error) {
+func (m *PriceMutation) OldPricePerUnit(ctx context.Context) (v float64, err error) {
 	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldPricePerHour is only allowed on UpdateOne operations")
+		return v, errors.New("OldPricePerUnit is only allowed on UpdateOne operations")
 	}
 	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldPricePerHour requires an ID field in the mutation")
+		return v, errors.New("OldPricePerUnit requires an ID field in the mutation")
 	}
 	oldValue, err := m.oldValue(ctx)
 	if err != nil {
-		return v, fmt.Errorf("querying old value for OldPricePerHour: %w", err)
+		return v, fmt.Errorf("querying old value for OldPricePerUnit: %w", err)
 	}
-	return oldValue.PricePerHour, nil
+	return oldValue.PricePerUnit, nil
 }
 
-// AddPricePerHour adds f to the "price_per_hour" field.
-func (m *PriceMutation) AddPricePerHour(f float64) {
-	if m.addprice_per_hour != nil {
-		*m.addprice_per_hour += f
+// AddPricePerUnit adds f to the "price_per_unit" field.
+func (m *PriceMutation) AddPricePerUnit(f float64) {
+	if m.addprice_per_unit != nil {
+		*m.addprice_per_unit += f
 	} else {
-		m.addprice_per_hour = &f
+		m.addprice_per_unit = &f
 	}
 }
 
-// AddedPricePerHour returns the value that was added to the "price_per_hour" field in this mutation.
-func (m *PriceMutation) AddedPricePerHour() (r float64, exists bool) {
-	v := m.addprice_per_hour
+// AddedPricePerUnit returns the value that was added to the "price_per_unit" field in this mutation.
+func (m *PriceMutation) AddedPricePerUnit() (r float64, exists bool) {
+	v := m.addprice_per_unit
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// ResetPricePerHour resets all changes to the "price_per_hour" field.
-func (m *PriceMutation) ResetPricePerHour() {
-	m.price_per_hour = nil
-	m.addprice_per_hour = nil
+// ResetPricePerUnit resets all changes to the "price_per_unit" field.
+func (m *PriceMutation) ResetPricePerUnit() {
+	m.price_per_unit = nil
+	m.addprice_per_unit = nil
+}
+
+// SetUnitOfMeasure sets the "unit_of_measure" field.
+func (m *PriceMutation) SetUnitOfMeasure(s string) {
+	m.unit_of_measure = &s
+}
+
+// UnitOfMeasure returns the value of the "unit_of_measure" field in the mutation.
+func (m *PriceMutation) UnitOfMeasure() (r string, exists bool) {
+	v := m.unit_of_measure
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUnitOfMeasure returns the old "unit_of_measure" field's value of the Price entity.
+// If the Price object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PriceMutation) OldUnitOfMeasure(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUnitOfMeasure is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUnitOfMeasure requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUnitOfMeasure: %w", err)
+	}
+	return oldValue.UnitOfMeasure, nil
+}
+
+// ResetUnitOfMeasure resets all changes to the "unit_of_measure" field.
+func (m *PriceMutation) ResetUnitOfMeasure() {
+	m.unit_of_measure = nil
 }
 
 // SetUpfrontCost sets the "upfront_cost" field.
@@ -567,7 +604,7 @@ func (m *PriceMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *PriceMutation) Fields() []string {
-	fields := make([]string, 0, 9)
+	fields := make([]string, 0, 10)
 	if m.provider != nil {
 		fields = append(fields, price.FieldProvider)
 	}
@@ -583,8 +620,11 @@ func (m *PriceMutation) Fields() []string {
 	if m.price_model != nil {
 		fields = append(fields, price.FieldPriceModel)
 	}
-	if m.price_per_hour != nil {
-		fields = append(fields, price.FieldPricePerHour)
+	if m.price_per_unit != nil {
+		fields = append(fields, price.FieldPricePerUnit)
+	}
+	if m.unit_of_measure != nil {
+		fields = append(fields, price.FieldUnitOfMeasure)
 	}
 	if m.upfront_cost != nil {
 		fields = append(fields, price.FieldUpfrontCost)
@@ -613,8 +653,10 @@ func (m *PriceMutation) Field(name string) (ent.Value, bool) {
 		return m.Region()
 	case price.FieldPriceModel:
 		return m.PriceModel()
-	case price.FieldPricePerHour:
-		return m.PricePerHour()
+	case price.FieldPricePerUnit:
+		return m.PricePerUnit()
+	case price.FieldUnitOfMeasure:
+		return m.UnitOfMeasure()
 	case price.FieldUpfrontCost:
 		return m.UpfrontCost()
 	case price.FieldCurrency:
@@ -640,8 +682,10 @@ func (m *PriceMutation) OldField(ctx context.Context, name string) (ent.Value, e
 		return m.OldRegion(ctx)
 	case price.FieldPriceModel:
 		return m.OldPriceModel(ctx)
-	case price.FieldPricePerHour:
-		return m.OldPricePerHour(ctx)
+	case price.FieldPricePerUnit:
+		return m.OldPricePerUnit(ctx)
+	case price.FieldUnitOfMeasure:
+		return m.OldUnitOfMeasure(ctx)
 	case price.FieldUpfrontCost:
 		return m.OldUpfrontCost(ctx)
 	case price.FieldCurrency:
@@ -692,12 +736,19 @@ func (m *PriceMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetPriceModel(v)
 		return nil
-	case price.FieldPricePerHour:
+	case price.FieldPricePerUnit:
 		v, ok := value.(float64)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetPricePerHour(v)
+		m.SetPricePerUnit(v)
+		return nil
+	case price.FieldUnitOfMeasure:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUnitOfMeasure(v)
 		return nil
 	case price.FieldUpfrontCost:
 		v, ok := value.(float64)
@@ -728,8 +779,8 @@ func (m *PriceMutation) SetField(name string, value ent.Value) error {
 // this mutation.
 func (m *PriceMutation) AddedFields() []string {
 	var fields []string
-	if m.addprice_per_hour != nil {
-		fields = append(fields, price.FieldPricePerHour)
+	if m.addprice_per_unit != nil {
+		fields = append(fields, price.FieldPricePerUnit)
 	}
 	if m.addupfront_cost != nil {
 		fields = append(fields, price.FieldUpfrontCost)
@@ -742,8 +793,8 @@ func (m *PriceMutation) AddedFields() []string {
 // was not set, or was not defined in the schema.
 func (m *PriceMutation) AddedField(name string) (ent.Value, bool) {
 	switch name {
-	case price.FieldPricePerHour:
-		return m.AddedPricePerHour()
+	case price.FieldPricePerUnit:
+		return m.AddedPricePerUnit()
 	case price.FieldUpfrontCost:
 		return m.AddedUpfrontCost()
 	}
@@ -755,12 +806,12 @@ func (m *PriceMutation) AddedField(name string) (ent.Value, bool) {
 // type.
 func (m *PriceMutation) AddField(name string, value ent.Value) error {
 	switch name {
-	case price.FieldPricePerHour:
+	case price.FieldPricePerUnit:
 		v, ok := value.(float64)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.AddPricePerHour(v)
+		m.AddPricePerUnit(v)
 		return nil
 	case price.FieldUpfrontCost:
 		v, ok := value.(float64)
@@ -820,8 +871,11 @@ func (m *PriceMutation) ResetField(name string) error {
 	case price.FieldPriceModel:
 		m.ResetPriceModel()
 		return nil
-	case price.FieldPricePerHour:
-		m.ResetPricePerHour()
+	case price.FieldPricePerUnit:
+		m.ResetPricePerUnit()
+		return nil
+	case price.FieldUnitOfMeasure:
+		m.ResetUnitOfMeasure()
 		return nil
 	case price.FieldUpfrontCost:
 		m.ResetUpfrontCost()

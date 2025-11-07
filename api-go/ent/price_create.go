@@ -51,9 +51,15 @@ func (_c *PriceCreate) SetPriceModel(v string) *PriceCreate {
 	return _c
 }
 
-// SetPricePerHour sets the "price_per_hour" field.
-func (_c *PriceCreate) SetPricePerHour(v float64) *PriceCreate {
-	_c.mutation.SetPricePerHour(v)
+// SetPricePerUnit sets the "price_per_unit" field.
+func (_c *PriceCreate) SetPricePerUnit(v float64) *PriceCreate {
+	_c.mutation.SetPricePerUnit(v)
+	return _c
+}
+
+// SetUnitOfMeasure sets the "unit_of_measure" field.
+func (_c *PriceCreate) SetUnitOfMeasure(v string) *PriceCreate {
+	_c.mutation.SetUnitOfMeasure(v)
 	return _c
 }
 
@@ -179,8 +185,11 @@ func (_c *PriceCreate) check() error {
 	if _, ok := _c.mutation.PriceModel(); !ok {
 		return &ValidationError{Name: "price_model", err: errors.New(`ent: missing required field "Price.price_model"`)}
 	}
-	if _, ok := _c.mutation.PricePerHour(); !ok {
-		return &ValidationError{Name: "price_per_hour", err: errors.New(`ent: missing required field "Price.price_per_hour"`)}
+	if _, ok := _c.mutation.PricePerUnit(); !ok {
+		return &ValidationError{Name: "price_per_unit", err: errors.New(`ent: missing required field "Price.price_per_unit"`)}
+	}
+	if _, ok := _c.mutation.UnitOfMeasure(); !ok {
+		return &ValidationError{Name: "unit_of_measure", err: errors.New(`ent: missing required field "Price.unit_of_measure"`)}
 	}
 	if _, ok := _c.mutation.Currency(); !ok {
 		return &ValidationError{Name: "currency", err: errors.New(`ent: missing required field "Price.currency"`)}
@@ -243,9 +252,13 @@ func (_c *PriceCreate) createSpec() (*Price, *sqlgraph.CreateSpec) {
 		_spec.SetField(price.FieldPriceModel, field.TypeString, value)
 		_node.PriceModel = value
 	}
-	if value, ok := _c.mutation.PricePerHour(); ok {
-		_spec.SetField(price.FieldPricePerHour, field.TypeFloat64, value)
-		_node.PricePerHour = value
+	if value, ok := _c.mutation.PricePerUnit(); ok {
+		_spec.SetField(price.FieldPricePerUnit, field.TypeFloat64, value)
+		_node.PricePerUnit = value
+	}
+	if value, ok := _c.mutation.UnitOfMeasure(); ok {
+		_spec.SetField(price.FieldUnitOfMeasure, field.TypeString, value)
+		_node.UnitOfMeasure = value
 	}
 	if value, ok := _c.mutation.UpfrontCost(); ok {
 		_spec.SetField(price.FieldUpfrontCost, field.TypeFloat64, value)

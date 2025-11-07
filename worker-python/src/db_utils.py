@@ -14,10 +14,10 @@ def insert_prices_to_db(prices):
     conn = get_db_connection()
     cursor = conn.cursor()
     insert_query = """
-    INSERT INTO "prices" (provider, service, resource_type, region, price_model, price_per_hour, currency, last_updated_at)
-    VALUES (%s, %s, %s, %s, %s, %s, %s, NOW())
-    ON CONFLICT (provider, resource_type, region, price_model) DO UPDATE SET
-        price_per_hour = EXCLUDED.price_per_hour,
+    INSERT INTO "prices" (provider, service, resource_type, region, price_model, price_per_unit, unit_of_measure, currency, last_updated_at)
+    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, NOW())
+    ON CONFLICT (provider, resource_type, region, price_model, unit_of_measure) DO UPDATE SET
+        price_per_unit = EXCLUDED.price_per_unit,
         currency = EXCLUDED.currency,
         last_updated_at = NOW();
     """
@@ -28,7 +28,8 @@ def insert_prices_to_db(prices):
             p["resourceType"],
             p["region"],
             p["priceModel"],
-            p["pricePerHour"],
+            p["pricePerUnit"],
+            p["unitOfMeasure"],
             p["currency"],
         )
         for p in prices

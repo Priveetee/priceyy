@@ -98,24 +98,38 @@ func (_u *PriceUpdate) SetNillablePriceModel(v *string) *PriceUpdate {
 	return _u
 }
 
-// SetPricePerHour sets the "price_per_hour" field.
-func (_u *PriceUpdate) SetPricePerHour(v float64) *PriceUpdate {
-	_u.mutation.ResetPricePerHour()
-	_u.mutation.SetPricePerHour(v)
+// SetPricePerUnit sets the "price_per_unit" field.
+func (_u *PriceUpdate) SetPricePerUnit(v float64) *PriceUpdate {
+	_u.mutation.ResetPricePerUnit()
+	_u.mutation.SetPricePerUnit(v)
 	return _u
 }
 
-// SetNillablePricePerHour sets the "price_per_hour" field if the given value is not nil.
-func (_u *PriceUpdate) SetNillablePricePerHour(v *float64) *PriceUpdate {
+// SetNillablePricePerUnit sets the "price_per_unit" field if the given value is not nil.
+func (_u *PriceUpdate) SetNillablePricePerUnit(v *float64) *PriceUpdate {
 	if v != nil {
-		_u.SetPricePerHour(*v)
+		_u.SetPricePerUnit(*v)
 	}
 	return _u
 }
 
-// AddPricePerHour adds value to the "price_per_hour" field.
-func (_u *PriceUpdate) AddPricePerHour(v float64) *PriceUpdate {
-	_u.mutation.AddPricePerHour(v)
+// AddPricePerUnit adds value to the "price_per_unit" field.
+func (_u *PriceUpdate) AddPricePerUnit(v float64) *PriceUpdate {
+	_u.mutation.AddPricePerUnit(v)
+	return _u
+}
+
+// SetUnitOfMeasure sets the "unit_of_measure" field.
+func (_u *PriceUpdate) SetUnitOfMeasure(v string) *PriceUpdate {
+	_u.mutation.SetUnitOfMeasure(v)
+	return _u
+}
+
+// SetNillableUnitOfMeasure sets the "unit_of_measure" field if the given value is not nil.
+func (_u *PriceUpdate) SetNillableUnitOfMeasure(v *string) *PriceUpdate {
+	if v != nil {
+		_u.SetUnitOfMeasure(*v)
+	}
 	return _u
 }
 
@@ -231,11 +245,14 @@ func (_u *PriceUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.PriceModel(); ok {
 		_spec.SetField(price.FieldPriceModel, field.TypeString, value)
 	}
-	if value, ok := _u.mutation.PricePerHour(); ok {
-		_spec.SetField(price.FieldPricePerHour, field.TypeFloat64, value)
+	if value, ok := _u.mutation.PricePerUnit(); ok {
+		_spec.SetField(price.FieldPricePerUnit, field.TypeFloat64, value)
 	}
-	if value, ok := _u.mutation.AddedPricePerHour(); ok {
-		_spec.AddField(price.FieldPricePerHour, field.TypeFloat64, value)
+	if value, ok := _u.mutation.AddedPricePerUnit(); ok {
+		_spec.AddField(price.FieldPricePerUnit, field.TypeFloat64, value)
+	}
+	if value, ok := _u.mutation.UnitOfMeasure(); ok {
+		_spec.SetField(price.FieldUnitOfMeasure, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.UpfrontCost(); ok {
 		_spec.SetField(price.FieldUpfrontCost, field.TypeFloat64, value)
@@ -342,24 +359,38 @@ func (_u *PriceUpdateOne) SetNillablePriceModel(v *string) *PriceUpdateOne {
 	return _u
 }
 
-// SetPricePerHour sets the "price_per_hour" field.
-func (_u *PriceUpdateOne) SetPricePerHour(v float64) *PriceUpdateOne {
-	_u.mutation.ResetPricePerHour()
-	_u.mutation.SetPricePerHour(v)
+// SetPricePerUnit sets the "price_per_unit" field.
+func (_u *PriceUpdateOne) SetPricePerUnit(v float64) *PriceUpdateOne {
+	_u.mutation.ResetPricePerUnit()
+	_u.mutation.SetPricePerUnit(v)
 	return _u
 }
 
-// SetNillablePricePerHour sets the "price_per_hour" field if the given value is not nil.
-func (_u *PriceUpdateOne) SetNillablePricePerHour(v *float64) *PriceUpdateOne {
+// SetNillablePricePerUnit sets the "price_per_unit" field if the given value is not nil.
+func (_u *PriceUpdateOne) SetNillablePricePerUnit(v *float64) *PriceUpdateOne {
 	if v != nil {
-		_u.SetPricePerHour(*v)
+		_u.SetPricePerUnit(*v)
 	}
 	return _u
 }
 
-// AddPricePerHour adds value to the "price_per_hour" field.
-func (_u *PriceUpdateOne) AddPricePerHour(v float64) *PriceUpdateOne {
-	_u.mutation.AddPricePerHour(v)
+// AddPricePerUnit adds value to the "price_per_unit" field.
+func (_u *PriceUpdateOne) AddPricePerUnit(v float64) *PriceUpdateOne {
+	_u.mutation.AddPricePerUnit(v)
+	return _u
+}
+
+// SetUnitOfMeasure sets the "unit_of_measure" field.
+func (_u *PriceUpdateOne) SetUnitOfMeasure(v string) *PriceUpdateOne {
+	_u.mutation.SetUnitOfMeasure(v)
+	return _u
+}
+
+// SetNillableUnitOfMeasure sets the "unit_of_measure" field if the given value is not nil.
+func (_u *PriceUpdateOne) SetNillableUnitOfMeasure(v *string) *PriceUpdateOne {
+	if v != nil {
+		_u.SetUnitOfMeasure(*v)
+	}
 	return _u
 }
 
@@ -505,11 +536,14 @@ func (_u *PriceUpdateOne) sqlSave(ctx context.Context) (_node *Price, err error)
 	if value, ok := _u.mutation.PriceModel(); ok {
 		_spec.SetField(price.FieldPriceModel, field.TypeString, value)
 	}
-	if value, ok := _u.mutation.PricePerHour(); ok {
-		_spec.SetField(price.FieldPricePerHour, field.TypeFloat64, value)
+	if value, ok := _u.mutation.PricePerUnit(); ok {
+		_spec.SetField(price.FieldPricePerUnit, field.TypeFloat64, value)
 	}
-	if value, ok := _u.mutation.AddedPricePerHour(); ok {
-		_spec.AddField(price.FieldPricePerHour, field.TypeFloat64, value)
+	if value, ok := _u.mutation.AddedPricePerUnit(); ok {
+		_spec.AddField(price.FieldPricePerUnit, field.TypeFloat64, value)
+	}
+	if value, ok := _u.mutation.UnitOfMeasure(); ok {
+		_spec.SetField(price.FieldUnitOfMeasure, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.UpfrontCost(); ok {
 		_spec.SetField(price.FieldUpfrontCost, field.TypeFloat64, value)

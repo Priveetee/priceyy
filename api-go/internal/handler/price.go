@@ -11,15 +11,13 @@ import (
 
 type PriceService interface {
 	Calculate(ctx context.Context, items []service.CalculationItem) (*service.CalculationResult, error)
+	GetProviders(ctx context.Context) ([]string, error)
 	GetRegions(ctx context.Context, provider string) ([]string, error)
+	GetResourceTypes(ctx context.Context, provider, region string) ([]string, error)
 }
 
 type PriceHandler struct {
 	service PriceService
-}
-
-func NewPriceHandler(s PriceService) *PriceHandler {
-	return &PriceHandler{service: s}
 }
 
 type CalculationRequestItem struct {
@@ -31,6 +29,10 @@ type CalculationRequestItem struct {
 
 type CalculationRequest struct {
 	Services []CalculationRequestItem `json:"services"`
+}
+
+func NewPriceHandler(s PriceService) *PriceHandler {
+	return &PriceHandler{service: s}
 }
 
 func (h *PriceHandler) HandleCalculate(w http.ResponseWriter, r *http.Request) {
@@ -66,6 +68,23 @@ func (h *PriceHandler) HandleCalculate(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(result)
 }
 
+func (h *PriceHandler) HandleGetProviders(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+		return
+	}
+
+	providers, err := h.service.GetProviders(r.Context())
+	if err != nil {
+		log.Printf("Failed to get providers: %v", err)
+		http.Error(w, "Failed to get providers", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(providers)
+}
+
 func (h *PriceHandler) HandleGetRegions(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
@@ -87,4 +106,28 @@ func (h *PriceHandler) HandleGetRegions(w http.ResponseWriter, r *http.Request) 
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(regions)
+}
+
+func (h *PriceHandler) HandleGetResourceTypes(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+		return
+	}
+
+	provider := r.URL.Query().Get("provider")
+	region := r.URL.Query().Get("region")
+	if provider == "" || region == "" {
+		http.Error(w, "Query parameters 'provider' and 'region' are required", http.StatusBadRequest)
+		return
+	}
+
+	resources, err := h.service.GetResourceTypes(r.Context(), provider, region)
+	if err != nil {
+		log.Printf("Failed to get resource types: %v", err)
+		http.Error(w, "Failed to get resource types", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resources)
 }

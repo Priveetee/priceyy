@@ -21,7 +21,8 @@ func (Price) Fields() []ent.Field {
 		field.String("resource_type"),
 		field.String("region"),
 		field.String("price_model"),
-		field.Float("price_per_hour"),
+		field.Float("price_per_unit"),
+		field.String("unit_of_measure"),
 		field.Float("upfront_cost").Optional(),
 		field.String("currency").Default("USD"),
 		field.Time("last_updated_at").Default(time.Now).UpdateDefault(time.Now),
@@ -30,6 +31,6 @@ func (Price) Fields() []ent.Field {
 
 func (Price) Indexes() []ent.Index {
 	return []ent.Index{
-		index.Fields("provider", "resource_type", "region", "price_model").Unique(),
+		index.Fields("provider", "resource_type", "region", "price_model", "unit_of_measure").Unique(),
 	}
 }

@@ -5,13 +5,14 @@ CREATE TABLE IF NOT EXISTS "prices" (
     "resource_type" TEXT NOT NULL,
     "region" TEXT NOT NULL,
     "price_model" TEXT NOT NULL,
-    "price_per_hour" NUMERIC(14, 6) NOT NULL,
+    "price_per_unit" NUMERIC(14, 6) NOT NULL,
+    "unit_of_measure" TEXT NOT NULL,
     "upfront_cost" NUMERIC(14, 2),
     "currency" TEXT NOT NULL DEFAULT 'EUR',
     "last_updated_at" TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS "price_unique_idx" ON "prices" ("provider", "resource_type", "region", "price_model");
+CREATE UNIQUE INDEX IF NOT EXISTS "price_unique_idx" ON "prices" ("provider", "resource_type", "region", "price_model", "unit_of_measure");
 
 CREATE TABLE IF NOT EXISTS "data_transfer_prices" (
     "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),

@@ -24,8 +24,10 @@ const (
 	FieldRegion = "region"
 	// FieldPriceModel holds the string denoting the price_model field in the database.
 	FieldPriceModel = "price_model"
-	// FieldPricePerHour holds the string denoting the price_per_hour field in the database.
-	FieldPricePerHour = "price_per_hour"
+	// FieldPricePerUnit holds the string denoting the price_per_unit field in the database.
+	FieldPricePerUnit = "price_per_unit"
+	// FieldUnitOfMeasure holds the string denoting the unit_of_measure field in the database.
+	FieldUnitOfMeasure = "unit_of_measure"
 	// FieldUpfrontCost holds the string denoting the upfront_cost field in the database.
 	FieldUpfrontCost = "upfront_cost"
 	// FieldCurrency holds the string denoting the currency field in the database.
@@ -44,7 +46,8 @@ var Columns = []string{
 	FieldResourceType,
 	FieldRegion,
 	FieldPriceModel,
-	FieldPricePerHour,
+	FieldPricePerUnit,
+	FieldUnitOfMeasure,
 	FieldUpfrontCost,
 	FieldCurrency,
 	FieldLastUpdatedAt,
@@ -104,9 +107,14 @@ func ByPriceModel(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldPriceModel, opts...).ToFunc()
 }
 
-// ByPricePerHour orders the results by the price_per_hour field.
-func ByPricePerHour(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldPricePerHour, opts...).ToFunc()
+// ByPricePerUnit orders the results by the price_per_unit field.
+func ByPricePerUnit(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldPricePerUnit, opts...).ToFunc()
+}
+
+// ByUnitOfMeasure orders the results by the unit_of_measure field.
+func ByUnitOfMeasure(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldUnitOfMeasure, opts...).ToFunc()
 }
 
 // ByUpfrontCost orders the results by the upfront_cost field.

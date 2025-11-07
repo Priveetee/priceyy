@@ -64,7 +64,6 @@ def _fetch_and_cache_gcp_data(api_key, cache_file_path):
                 skus_request = billing_v1.ListSkusRequest(parent=service.name)
                 for sku in client.list_skus(request=skus_request):
                     all_skus.append(_sku_to_dict(sku, service.display_name))
-
                 pbar.update(1)
                 time.sleep(0.2)
 
@@ -96,6 +95,7 @@ def _sku_to_dict(sku, service_display_name):
         "service_display_name": service_display_name,
         "regions": list(sku.geo_taxonomy.regions),
         "pricing_expression": pricing_expression,
+        "unit": sku.pricing_info[0].pricing_expression.usage_unit,
     }
 
 
@@ -120,7 +120,8 @@ def _process_gcp_cache(cache_file_path):
                                     "resourceType": sku["description"],
                                     "region": region,
                                     "priceModel": "on-demand",
-                                    "pricePerHour": price,
+                                    "pricePerUnit": price,
+                                    "unitOfMeasure": sku.get("unit", "N/A"),
                                     "currency": rate["currency_code"],
                                 }
                             )

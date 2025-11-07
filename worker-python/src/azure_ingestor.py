@@ -21,11 +21,11 @@ def ingest(force=False):
         print("Azure VM prices were already ingested today. Skipping.")
         return
 
-    cache_file_path = os.path.join(CACHE_DIR, "AzureVM_offer.json")
+    cache_file_path = os.path.join(CACHE_DIR, "Azure_full_offer.json")
 
-    print("Downloading all pages from Azure API. This may take a few minutes...")
+    print("Downloading all pages from Azure API. This may take several minutes...")
     all_items = []
-    next_page_url = AZURE_PRICING_API_URL + "?$filter=serviceName eq 'Virtual Machines'"
+    next_page_url = AZURE_PRICING_API_URL
 
     try:
         with tqdm(desc="Fetching Azure pages") as pbar:
@@ -51,17 +51,17 @@ def ingest(force=False):
             if (
                 "armSkuName" in item
                 and "armRegionName" in item
-                and item.get("unitOfMeasure") == "1 Hour"
                 and "reservationTerm" not in item
             ):
                 prices_to_insert.append(
                     {
                         "provider": "azure",
-                        "service": "Virtual Machines",
+                        "service": item["serviceName"],
                         "resourceType": item["armSkuName"],
                         "region": item["armRegionName"],
                         "priceModel": "on-demand",
-                        "pricePerHour": float(item["retailPrice"]),
+                        "pricePerUnit": float(item["retailPrice"]),
+                        "unitOfMeasure": item["unitOfMeasure"],
                         "currency": item["currencyCode"],
                     }
                 )

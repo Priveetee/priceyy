@@ -42,11 +42,7 @@ def ingest(force=False):
     with open(cache_file_path, "rb") as f:
         for sku, product in ijson.kvitems(f, "products"):
             attributes = product.get("attributes", {})
-            if (
-                product.get("productFamily") == "Compute Instance"
-                and "instanceType" in attributes
-                and "location" in attributes
-            ):
+            if "instanceType" in attributes and "location" in attributes:
                 product_map[sku] = attributes
 
     print(f"Found {len(product_map)} relevant products. Pass 2: Processing prices...")
@@ -57,20 +53,20 @@ def ingest(force=False):
                 product_attributes = product_map[sku]
                 for price_dimension in term.values():
                     for dim_details in price_dimension["priceDimensions"].values():
-                        if dim_details["unit"] == "Hrs":
-                            prices_to_insert.append(
-                                {
-                                    "provider": "aws",
-                                    "service": "ec2",
-                                    "resourceType": product_attributes["instanceType"],
-                                    "region": product_attributes["location"],
-                                    "priceModel": "on-demand",
-                                    "pricePerHour": float(
-                                        dim_details["pricePerUnit"]["USD"]
-                                    ),
-                                    "currency": "USD",
-                                }
-                            )
+                        prices_to_insert.append(
+                            {
+                                "provider": "aws",
+                                "service": "ec2",
+                                "resourceType": product_attributes["instanceType"],
+                                "region": product_attributes["location"],
+                                "priceModel": "on-demand",
+                                "pricePerUnit": float(
+                                    dim_details["pricePerUnit"]["USD"]
+                                ),
+                                "unitOfMeasure": dim_details["unit"],
+                                "currency": "USD",
+                            }
+                        )
 
     print(f"Transformed {len(prices_to_insert)} prices for database insertion.")
     insert_prices_to_db(prices_to_insert)
