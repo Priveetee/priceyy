@@ -5,8 +5,8 @@ CREATE TABLE IF NOT EXISTS "prices" (
     "resource_type" TEXT NOT NULL,
     "region" TEXT NOT NULL,
     "price_model" TEXT NOT NULL,
-    "price_per_hour" NUMERIC(10, 6) NOT NULL,
-    "upfront_cost" NUMERIC(10, 2),
+    "price_per_hour" NUMERIC(14, 6) NOT NULL,
+    "upfront_cost" NUMERIC(14, 2),
     "currency" TEXT NOT NULL DEFAULT 'EUR',
     "last_updated_at" TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS "data_transfer_prices" (
     "from_region" TEXT NOT NULL,
     "to_region" TEXT NOT NULL,
     "transfer_type" TEXT NOT NULL,
-    "price_per_gb" NUMERIC(10, 6) NOT NULL,
+    "price_per_gb" NUMERIC(14, 6) NOT NULL,
     "currency" TEXT NOT NULL DEFAULT 'EUR',
     "last_updated_at" TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
