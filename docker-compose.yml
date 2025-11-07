@@ -54,6 +54,23 @@ services:
       postgres:
         condition: service_healthy
 
+  frontend:
+    build:
+      context: ./frontend-nextjs
+      dockerfile: Dockerfile.dev
+    container_name: priceyy-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend-nextjs:/app
+      - /app/node_modules
+      - /app/.next
+    networks:
+      - priceyy_network
+    environment:
+      - NEXT_PUBLIC_API_URL=http://api:8080
+
 volumes:
   postgres_data:
 
