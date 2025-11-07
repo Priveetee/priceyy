@@ -3,7 +3,6 @@ package handler
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"priceyy/api/internal/service"
@@ -60,7 +59,9 @@ func (h *PriceHandler) HandleCalculate(w http.ResponseWriter, r *http.Request) {
 	result, err := h.service.Calculate(r.Context(), items)
 	if err != nil {
 		log.Printf("Calculation failed: %v", err)
-		http.Error(w, fmt.Sprintf("Calculation error: %v", err), http.StatusNotFound)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
 		return
 	}
 
@@ -126,7 +127,9 @@ func (h *PriceHandler) HandleGetResourceTypes(w http.ResponseWriter, r *http.Req
 	resources, err := h.service.GetResourceTypes(r.Context(), provider, region, query)
 	if err != nil {
 		log.Printf("Failed to get resource types: %v", err)
-		http.Error(w, "Failed to get resource types", http.StatusInternalServerError)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"error": "Failed to get resource types"})
 		return
 	}
 
