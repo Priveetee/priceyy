@@ -1,0 +1,74 @@
+import json
+import os
+from datetime import datetime, timezone
+
+import httpx
+import ijson
+from tqdm import tqdm
+
+from .db_utils import insert_prices_to_db
+from .state_manager import CACHE_DIR, load_state, save_state
+
+AZURE_PRICING_API_URL = "https://prices.azure.com/api/retail/prices"
+
+
+def ingest(force=False):
+    print("\n--- Starting Azure VM Price Ingestion ---")
+    state = load_state()
+    today_date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+    if not force and state.get("azure_vm_ingestion_date") == today_date:
+        print("Azure VM prices were already ingested today. Skipping.")
+        return
+
+    cache_file_path = os.path.join(CACHE_DIR, "AzureVM_offer.json")
+
+    print("Downloading all pages from Azure API. This may take a few minutes...")
+    all_items = []
+    next_page_url = AZURE_PRICING_API_URL + "?$filter=serviceName eq 'Virtual Machines'"
+
+    try:
+        with tqdm(desc="Fetching Azure pages") as pbar:
+            while next_page_url:
+                response = httpx.get(next_page_url, timeout=60.0)
+                response.raise_for_status()
+                data = response.json()
+                all_items.extend(data.get("Items", []))
+                next_page_url = data.get("NextPageLink")
+                pbar.update(1)
+    except Exception as e:
+        print(f"Failed to download Azure data: {e}")
+        return
+
+    with open(cache_file_path, "w") as f:
+        json.dump({"Items": all_items}, f)
+    print(f"Download complete. Saved {len(all_items)} items to cache.")
+
+    print("Processing Azure prices from cache...")
+    prices_to_insert = []
+    with open(cache_file_path, "rb") as f:
+        for item in ijson.items(f, "Items.item"):
+            if (
+                "armSkuName" in item
+                and "armRegionName" in item
+                and item.get("unitOfMeasure") == "1 Hour"
+                and "reservationTerm" not in item
+            ):
+                prices_to_insert.append(
+                    {
+                        "provider": "azure",
+                        "service": "Virtual Machines",
+                        "resourceType": item["armSkuName"],
+                        "region": item["armRegionName"],
+                        "priceModel": "on-demand",
+                        "pricePerHour": float(item["retailPrice"]),
+                        "currency": item["currencyCode"],
+                    }
+                )
+
+    print(f"Transformed {len(prices_to_insert)} Azure prices for database insertion.")
+    insert_prices_to_db(prices_to_insert)
+
+    state["azure_vm_ingestion_date"] = today_date
+    save_state(state)
+    print("--- Azure VM Price Ingestion Finished ---")

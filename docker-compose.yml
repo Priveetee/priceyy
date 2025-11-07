@@ -28,6 +28,7 @@ services:
     restart: unless-stopped
     environment:
       DATABASE_URL: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}"
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY}
     volumes:
       - ./worker-python:/app
     networks:
