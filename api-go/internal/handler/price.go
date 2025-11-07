@@ -13,7 +13,7 @@ type PriceService interface {
 	Calculate(ctx context.Context, items []service.CalculationItem) (*service.CalculationResult, error)
 	GetProviders(ctx context.Context) ([]string, error)
 	GetRegions(ctx context.Context, provider string) ([]string, error)
-	GetResourceTypes(ctx context.Context, provider, region string) ([]string, error)
+	GetResourceTypes(ctx context.Context, provider, region, query string) ([]string, error)
 }
 
 type PriceHandler struct {
@@ -116,12 +116,14 @@ func (h *PriceHandler) HandleGetResourceTypes(w http.ResponseWriter, r *http.Req
 
 	provider := r.URL.Query().Get("provider")
 	region := r.URL.Query().Get("region")
+	query := r.URL.Query().Get("q")
+
 	if provider == "" || region == "" {
 		http.Error(w, "Query parameters 'provider' and 'region' are required", http.StatusBadRequest)
 		return
 	}
 
-	resources, err := h.service.GetResourceTypes(r.Context(), provider, region)
+	resources, err := h.service.GetResourceTypes(r.Context(), provider, region, query)
 	if err != nil {
 		log.Printf("Failed to get resource types: %v", err)
 		http.Error(w, "Failed to get resource types", http.StatusInternalServerError)

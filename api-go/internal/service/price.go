@@ -10,7 +10,7 @@ type PriceRepository interface {
 	FindPrice(ctx context.Context, provider, resourceType, region, priceModel string) (*ent.Price, error)
 	ListDistinctProviders(ctx context.Context) ([]string, error)
 	ListDistinctRegions(ctx context.Context, provider string) ([]string, error)
-	ListDistinctResourceTypes(ctx context.Context, provider, region string) ([]string, error)
+	ListDistinctResourceTypes(ctx context.Context, provider, region, query string) ([]string, error)
 }
 
 type PriceService struct {
@@ -85,6 +85,6 @@ func (s *PriceService) GetRegions(ctx context.Context, provider string) ([]strin
 	return s.repo.ListDistinctRegions(ctx, provider)
 }
 
-func (s *PriceService) GetResourceTypes(ctx context.Context, provider, region string) ([]string, error) {
-	return s.repo.ListDistinctResourceTypes(ctx, provider, region)
+func (s *PriceService) GetResourceTypes(ctx context.Context, provider, region, query string) ([]string, error) {
+	return s.repo.ListDistinctResourceTypes(ctx, provider, region, query)
 }

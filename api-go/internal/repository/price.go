@@ -38,13 +38,18 @@ func (r *PriceRepository) ListDistinctRegions(ctx context.Context, provider stri
 		Strings(ctx)
 }
 
-func (r *PriceRepository) ListDistinctResourceTypes(ctx context.Context, provider, region string) ([]string, error) {
-	return r.client.Price.Query().
+func (r *PriceRepository) ListDistinctResourceTypes(ctx context.Context, provider, region, query string) ([]string, error) {
+	q := r.client.Price.Query().
 		Where(
 			price.Provider(provider),
 			price.Region(region),
-		).
-		Order(ent.Asc(price.FieldResourceType)).
+		)
+
+	if query != "" {
+		q = q.Where(price.ResourceTypeContainsFold(query))
+	}
+
+	return q.Order(ent.Asc(price.FieldResourceType)).
 		GroupBy(price.FieldResourceType).
 		Strings(ctx)
 }
