@@ -1,10 +1,12 @@
-FROM golang:1.24 AS builder
+FROM golang:1.25 AS builder
 
 WORKDIR /app
 
 COPY . .
 
-RUN CGO_ENABLED=0 GOOS=linux go build -o /main .
+RUN go mod tidy
+
+RUN CGO_ENABLED=0 GOOS=linux go build -o /main ./cmd/api
 
 FROM alpine:latest
 
