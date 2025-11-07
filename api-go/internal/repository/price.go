@@ -14,7 +14,7 @@ func NewPriceRepository(client *ent.Client) *PriceRepository {
 	return &PriceRepository{client: client}
 }
 
-func (r *PriceRepository) FindPrice(ctx context.Context, provider, resourceType, region, priceModel string) (*ent.Price, error) {
+func (r *PriceRepository) FindPrices(ctx context.Context, provider, resourceType, region, priceModel string) ([]*ent.Price, error) {
 	return r.client.Price.Query().
 		Where(
 			price.Provider(provider),
@@ -22,7 +22,7 @@ func (r *PriceRepository) FindPrice(ctx context.Context, provider, resourceType,
 			price.Region(region),
 			price.PriceModel(priceModel),
 		).
-		First(ctx)
+		All(ctx)
 }
 
 func (r *PriceRepository) ListDistinctProviders(ctx context.Context) ([]string, error) {

@@ -7,7 +7,7 @@ import (
 )
 
 type PriceRepository interface {
-	FindPrice(ctx context.Context, provider, resourceType, region, priceModel string) (*ent.Price, error)
+	FindPrices(ctx context.Context, provider, resourceType, region, priceModel string) ([]*ent.Price, error)
 	ListDistinctProviders(ctx context.Context) ([]string, error)
 	ListDistinctRegions(ctx context.Context, provider string) ([]string, error)
 	ListDistinctResourceTypes(ctx context.Context, provider, region, query string) ([]string, error)
@@ -25,20 +25,25 @@ type CalculationItem struct {
 	Provider     string
 	ResourceType string
 	Region       string
-	Quantity     int
+	Usage        map[string]float64
+}
+
+type UsageCost struct {
+	Unit         string  `json:"unit"`
+	Quantity     float64 `json:"quantity"`
+	CostPerMonth float64 `json:"costPerMonth"`
 }
 
 type ServiceCost struct {
-	ResourceType  string
-	Region        string
-	Quantity      int
-	UnitOfMeasure string
-	CostPerMonth  float64
+	ResourceType   string      `json:"resourceType"`
+	Region         string      `json:"region"`
+	TotalCost      float64     `json:"totalCost"`
+	UsageBreakdown []UsageCost `json:"usageBreakdown"`
 }
 
 type CalculationResult struct {
-	TotalCostPerMonth float64
-	Breakdown         []ServiceCost
+	TotalCostPerMonth float64       `json:"totalCostPerMonth"`
+	Breakdown         []ServiceCost `json:"breakdown"`
 }
 
 func (s *PriceService) Calculate(ctx context.Context, items []CalculationItem) (*CalculationResult, error) {
@@ -47,27 +52,47 @@ func (s *PriceService) Calculate(ctx context.Context, items []CalculationItem) (
 	hoursPerMonth := 730.0
 
 	for _, item := range items {
-		priceRecord, err := s.repo.FindPrice(ctx, item.Provider, item.ResourceType, item.Region, "on-demand")
-		if err != nil {
-			return nil, fmt.Errorf("price not found for %s in %s", item.ResourceType, item.Region)
+		priceRecords, err := s.repo.FindPrices(ctx, item.Provider, item.ResourceType, item.Region, "on-demand")
+		if err != nil || len(priceRecords) == 0 {
+			return nil, fmt.Errorf("prices not found for %s in %s", item.ResourceType, item.Region)
 		}
 
-		var cost float64
-		switch priceRecord.UnitOfMeasure {
-		case "Hrs", "1 Hour":
-			cost = float64(item.Quantity) * priceRecord.PricePerUnit * hoursPerMonth
-		default:
-			cost = float64(item.Quantity) * priceRecord.PricePerUnit
+		priceMap := make(map[string]float64)
+		for _, p := range priceRecords {
+			priceMap[p.UnitOfMeasure] = p.PricePerUnit
 		}
 
-		totalCost += cost
+		var serviceTotalCost float64
+		var usageBreakdown []UsageCost
 
+		for unit, quantity := range item.Usage {
+			pricePerUnit, ok := priceMap[unit]
+			if !ok {
+				continue
+			}
+
+			var cost float64
+			switch unit {
+			case "Hrs", "1 Hour":
+				cost = quantity * pricePerUnit * hoursPerMonth
+			default:
+				cost = quantity * pricePerUnit
+			}
+
+			serviceTotalCost += cost
+			usageBreakdown = append(usageBreakdown, UsageCost{
+				Unit:         unit,
+				Quantity:     quantity,
+				CostPerMonth: cost,
+			})
+		}
+
+		totalCost += serviceTotalCost
 		breakdown = append(breakdown, ServiceCost{
-			ResourceType:  item.ResourceType,
-			Region:        item.Region,
-			Quantity:      item.Quantity,
-			UnitOfMeasure: priceRecord.UnitOfMeasure,
-			CostPerMonth:  cost,
+			ResourceType:   item.ResourceType,
+			Region:         item.Region,
+			TotalCost:      serviceTotalCost,
+			UsageBreakdown: usageBreakdown,
 		})
 	}
 

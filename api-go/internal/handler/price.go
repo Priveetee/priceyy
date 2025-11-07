@@ -21,10 +21,10 @@ type PriceHandler struct {
 }
 
 type CalculationRequestItem struct {
-	Provider     string `json:"provider"`
-	ResourceType string `json:"resourceType"`
-	Region       string `json:"region"`
-	Quantity     int    `json:"quantity"`
+	Provider     string             `json:"provider"`
+	ResourceType string             `json:"resourceType"`
+	Region       string             `json:"region"`
+	Usage        map[string]float64 `json:"usage"`
 }
 
 type CalculationRequest struct {
@@ -53,7 +53,7 @@ func (h *PriceHandler) HandleCalculate(w http.ResponseWriter, r *http.Request) {
 			Provider:     s.Provider,
 			ResourceType: s.ResourceType,
 			Region:       s.Region,
-			Quantity:     s.Quantity,
+			Usage:        s.Usage,
 		}
 	}
 

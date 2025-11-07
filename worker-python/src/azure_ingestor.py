@@ -1,5 +1,6 @@
 import json
 import os
+import time
 from datetime import datetime, timezone
 
 import httpx
@@ -30,14 +31,24 @@ def ingest(force=False):
     try:
         with tqdm(desc="Fetching Azure pages") as pbar:
             while next_page_url:
-                response = httpx.get(next_page_url, timeout=60.0)
-                response.raise_for_status()
-                data = response.json()
-                all_items.extend(data.get("Items", []))
-                next_page_url = data.get("NextPageLink")
-                pbar.update(1)
+                retries = 3
+                for attempt in range(retries):
+                    try:
+                        response = httpx.get(next_page_url, timeout=60.0)
+                        response.raise_for_status()
+                        data = response.json()
+                        all_items.extend(data.get("Items", []))
+                        next_page_url = data.get("NextPageLink")
+                        pbar.update(1)
+                        break
+                    except (httpx.ReadError, httpx.RemoteProtocolError) as e:
+                        if attempt < retries - 1:
+                            print(f"Network error: {e}. Retrying in 5 seconds...")
+                            time.sleep(5)
+                        else:
+                            raise
     except Exception as e:
-        print(f"Failed to download Azure data: {e}")
+        print(f"Failed to download Azure data after multiple retries: {e}")
         return
 
     with open(cache_file_path, "w") as f:
