@@ -1,23 +1,24 @@
 "use client";
 
+import { useEffect } from "react";
 import Silk from "@/components/ui/Silk";
 import { useCartStore } from "@/lib/cartStore";
 import { motion } from "framer-motion";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Loader2, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { trpc } from "@/lib/trpc/client";
 
 export default function ResultsPage() {
   const { items } = useCartStore();
+  const calculateMutation = trpc.calculate.useMutation();
 
-  const calculateTotal = () => {
-    return items.reduce((total, item) => {
-      const mockPrice = item.name.length * 10;
-      return total + item.count * mockPrice;
-    }, 0);
-  };
-
-  const totalPrice = calculateTotal();
+  useEffect(() => {
+    if (items.length > 0) {
+      const servicesToCalculate = items.map(({ id, ...rest }) => rest);
+      calculateMutation.mutate(servicesToCalculate);
+    }
+  }, [items, calculateMutation]);
 
   return (
     <div className="relative min-h-screen w-full">
@@ -54,33 +55,55 @@ export default function ResultsPage() {
             <div className="p-6">
               <h2 className="text-xl font-semibold text-white">Summary</h2>
             </div>
-            {items.length > 0 ? (
+            {calculateMutation.isPending && (
+              <div className="p-12 flex justify-center items-center">
+                <Loader2 className="h-8 w-8 animate-spin text-zinc-400" />
+              </div>
+            )}
+            {calculateMutation.isError && (
+              <div className="p-12 text-center text-red-400 flex flex-col items-center gap-4">
+                <AlertTriangle className="h-8 w-8" />
+                <p>Calculation failed: {calculateMutation.error.message}</p>
+              </div>
+            )}
+            {calculateMutation.isSuccess && (
               <>
                 <ul className="border-t border-b border-zinc-800">
-                  {items.map((item) => (
-                    <li
-                      key={item.id}
-                      className="flex justify-between items-center p-4 border-b border-zinc-800 last:border-b-0"
-                    >
-                      <span className="text-zinc-200">{item.name}</span>
-                      <span className="text-white font-medium">
-                        x {item.count}
-                      </span>
-                    </li>
-                  ))}
+                  {calculateMutation.data.breakdown.map(
+                    (item: any, index: number) => (
+                      <li
+                        key={index}
+                        className="flex justify-between items-center p-4 border-b border-zinc-800 last:border-b-0"
+                      >
+                        <div>
+                          <span className="text-zinc-200">
+                            {item.resourceType}
+                          </span>
+                          <span className="text-xs text-zinc-500 block">
+                            {item.region}
+                          </span>
+                        </div>
+                        <span className="text-white font-medium">
+                          ${item.totalCost.toFixed(2)}
+                        </span>
+                      </li>
+                    ),
+                  )}
                 </ul>
                 <div className="p-6 flex justify-between items-center">
                   <span className="text-lg font-semibold text-white">
                     Estimated Total
                   </span>
                   <span className="text-2xl font-bold text-green-400">
-                    ${totalPrice.toFixed(2)} / month
+                    ${calculateMutation.data.totalCostPerMonth.toFixed(2)} /
+                    month
                   </span>
                 </div>
               </>
-            ) : (
+            )}
+            {!calculateMutation.isPending && items.length === 0 && (
               <div className="p-12 text-center text-zinc-400">
-                No items in the estimate.
+                No items in the estimate to calculate.
               </div>
             )}
           </div>

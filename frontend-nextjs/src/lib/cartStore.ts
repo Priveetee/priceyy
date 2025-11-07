@@ -1,47 +1,60 @@
 import { create } from "zustand";
 
-interface Resource {
+interface Usage {
+  [unit: string]: number;
+}
+
+export interface CartItem {
   id: string;
-  name: string;
-  count: number;
+  provider: string;
+  region: string;
+  resourceType: string;
+  usage: Usage;
 }
 
 interface CartState {
-  items: Resource[];
-  addToCart: (resource: Resource) => void;
-  removeFromCart: (resourceId: string) => void;
-  updateQuantity: (resourceId: string, newCount: number) => void;
+  items: CartItem[];
+  addToCart: (itemToAdd: CartItem) => void;
+  removeFromCart: (itemId: string) => void;
+  updateUsage: (itemId: string, newUsage: Usage) => void;
   clearCart: () => void;
 }
 
-export const useCartStore = create<CartState>(set => ({
+export const useCartStore = create<CartState>((set) => ({
   items: [],
-  addToCart: resourceToAdd =>
-    set(state => {
-      const existingItem = state.items.find(
-        item => item.name === resourceToAdd.name
+  addToCart: (itemToAdd) =>
+    set((state) => {
+      const existingItemIndex = state.items.findIndex(
+        (item) =>
+          item.provider === itemToAdd.provider &&
+          item.region === itemToAdd.region &&
+          item.resourceType === itemToAdd.resourceType,
       );
-      if (existingItem) {
-        return {
-          items: state.items.map(item =>
-            item.name === resourceToAdd.name
-              ? { ...item, count: item.count + resourceToAdd.count }
-              : item
-          )
-        };
+
+      if (existingItemIndex > -1) {
+        const newItems = [...state.items];
+        const existingItem = newItems[existingItemIndex];
+        const newUsage = { ...existingItem.usage };
+
+        for (const unit in itemToAdd.usage) {
+          newUsage[unit] = (newUsage[unit] || 0) + itemToAdd.usage[unit];
+        }
+
+        newItems[existingItemIndex] = { ...existingItem, usage: newUsage };
+        return { items: newItems };
       } else {
-        return { items: [...state.items, resourceToAdd] };
+        return { items: [...state.items, itemToAdd] };
       }
     }),
-  removeFromCart: resourceId =>
-    set(state => ({
-      items: state.items.filter(item => item.id !== resourceId)
+  removeFromCart: (itemId) =>
+    set((state) => ({
+      items: state.items.filter((item) => item.id !== itemId),
     })),
-  updateQuantity: (resourceId, newCount) =>
-    set(state => ({
-      items: state.items.map(item =>
-        item.id === resourceId ? { ...item, count: newCount } : item
-      )
+  updateUsage: (itemId, newUsage) =>
+    set((state) => ({
+      items: state.items.map((item) =>
+        item.id === itemId ? { ...item, usage: newUsage } : item,
+      ),
     })),
-  clearCart: () => set({ items: [] })
+  clearCart: () => set({ items: [] }),
 }));

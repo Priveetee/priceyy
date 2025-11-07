@@ -19,62 +19,41 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { useCartStore } from "@/lib/cartStore";
+import { useCartStore, CartItem } from "@/lib/cartStore";
 import Link from "next/link";
+import { nanoid } from "nanoid";
 
-interface Resource {
-  id: string;
-  name: string;
-  count: number;
-}
+export default function CalculatePage() {
+  const {
+    items: cartItems,
+    addToCart,
+    clearCart,
+    removeFromCart,
+  } = useCartStore();
 
-export default function HomePage() {
-  const [selectedResources, setSelectedResources] = useState<Resource[]>([]);
-  const { items: cartItems, addToCart, clearCart } = useCartStore();
-
-  const handleAddResource = (resourceName: string) => {
-    const newResource: Resource = {
-      id: `${resourceName}-${Date.now()}`,
-      name: resourceName,
-      count: 1,
+  const handleAddResource = (
+    resource: Omit<CartItem, "id" | "usage"> & {
+      usage: { unit: string; quantity: number };
+    },
+  ) => {
+    const newCartItem: CartItem = {
+      id: nanoid(),
+      provider: resource.provider,
+      region: resource.region,
+      resourceType: resource.resourceType,
+      usage: { [resource.usage.unit]: resource.usage.quantity },
     };
-    setSelectedResources((prev) => [...prev, newResource]);
-  };
-
-  const handleRemoveResource = (resourceId: string) => {
-    setSelectedResources((prev) =>
-      prev.filter((resource) => resource.id !== resourceId),
-    );
-  };
-
-  const handleCountChange = (resourceId: string, newCount: number) => {
-    setSelectedResources((prev) =>
-      prev.map((resource) =>
-        resource.id === resourceId
-          ? { ...resource, count: newCount }
-          : resource,
-      ),
-    );
+    addToCart(newCartItem);
+    toast.success(`Added "${resource.resourceType}" to your estimate.`);
   };
 
   const handleClearAll = () => {
-    setSelectedResources([]);
     clearCart();
     toast.info("Your estimate has been cleared.");
   };
 
-  const handleAddToCart = (resourceToAdd: Resource) => {
-    addToCart(resourceToAdd);
-    toast.success(
-      `Added ${resourceToAdd.count}x "${resourceToAdd.name}" to your estimate.`,
-    );
-  };
-
-  const totalCartItems = cartItems.reduce(
-    (total, item) => total + item.count,
-    0,
-  );
-  const displayCount = totalCartItems > 10 ? "10+" : totalCartItems;
+  const totalCartItems = cartItems.length;
+  const displayCount = totalCartItems > 99 ? "99+" : totalCartItems;
 
   return (
     <div className="relative min-h-screen w-full">
@@ -112,7 +91,7 @@ export default function HomePage() {
                   <ShoppingCart className="h-5 w-5" />
                 </Button>
               </Link>
-              {(selectedResources.length > 0 || cartItems.length > 0) && (
+              {cartItems.length > 0 && (
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button
@@ -130,8 +109,8 @@ export default function HomePage() {
                         Are you absolutely sure?
                       </AlertDialogTitle>
                       <AlertDialogDescription className="text-zinc-400">
-                        This will permanently delete all selected resources and
-                        clear your cart.
+                        This will permanently delete all items from your
+                        estimate.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
@@ -150,17 +129,11 @@ export default function HomePage() {
               )}
             </div>
           </div>
-          {selectedResources.length > 0 ? (
+          {cartItems.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               <AnimatePresence>
-                {selectedResources.map((resource) => (
-                  <ResourceCard
-                    key={resource.id}
-                    resource={resource}
-                    onRemove={handleRemoveResource}
-                    onCountChange={handleCountChange}
-                    onAddToCart={handleAddToCart}
-                  />
+                {cartItems.map((item) => (
+                  <ResourceCard key={item.id} resource={item} />
                 ))}
               </AnimatePresence>
             </div>

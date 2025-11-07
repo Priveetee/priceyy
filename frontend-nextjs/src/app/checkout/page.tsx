@@ -3,13 +3,23 @@
 import Silk from "@/components/ui/Silk";
 import { useCartStore } from "@/lib/cartStore";
 import { motion } from "framer-motion";
-import SimpleCounter from "@/components/ui/SimpleCounter";
 import { Trash2, Calculator, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { Input } from "@/components/ui/input";
 
 export default function CheckoutPage() {
-  const { items, removeFromCart, updateQuantity } = useCartStore();
+  const { items, removeFromCart, updateUsage } = useCartStore();
+
+  const handleQuantityChange = (
+    itemId: string,
+    unit: string,
+    newQuantity: number,
+  ) => {
+    if (newQuantity >= 0) {
+      updateUsage(itemId, { [unit]: newQuantity });
+    }
+  };
 
   return (
     <div className="relative min-h-screen w-full">
@@ -25,7 +35,7 @@ export default function CheckoutPage() {
           className="max-w-3xl mx-auto"
         >
           <div className="mb-8">
-            <Link href="/home" passHref>
+            <Link href="/calculate" passHref>
               <Button
                 variant="ghost"
                 className="text-zinc-400 hover:text-white mb-4"
@@ -48,39 +58,56 @@ export default function CheckoutPage() {
             </div>
           ) : (
             <div className="space-y-4">
-              {items.map((item, index) => (
-                <motion.div
-                  key={item.id}
-                  initial={{ scale: 0.8, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  transition={{
-                    duration: 0.3,
-                    delay: index * 0.08,
-                    ease: "easeOut",
-                  }}
-                  className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-4 flex items-center justify-between shadow-lg"
-                >
-                  <span className="text-lg text-zinc-300 font-medium">
-                    {item.name}
-                  </span>
-                  <div className="flex items-center gap-4">
-                    <SimpleCounter
-                      value={item.count}
-                      onValueChange={(newCount) =>
-                        updateQuantity(item.id, newCount)
-                      }
-                    />
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => removeFromCart(item.id)}
-                      className="text-zinc-500 hover:text-red-400"
-                    >
-                      <Trash2 className="h-5 w-5" />
-                    </Button>
-                  </div>
-                </motion.div>
-              ))}
+              {items.map((item, index) => {
+                const unit = Object.keys(item.usage)[0] || "N/A";
+                const quantity = item.usage[unit] || 0;
+
+                return (
+                  <motion.div
+                    key={item.id}
+                    initial={{ scale: 0.8, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{
+                      duration: 0.3,
+                      delay: index * 0.08,
+                      ease: "easeOut",
+                    }}
+                    className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-4 flex items-center justify-between shadow-lg"
+                  >
+                    <div className="flex flex-col">
+                      <span className="text-lg text-zinc-300 font-medium">
+                        {item.resourceType}
+                      </span>
+                      <span className="text-sm text-zinc-500">
+                        {item.provider} - {item.region}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <Input
+                        type="number"
+                        value={quantity}
+                        onChange={(e) =>
+                          handleQuantityChange(
+                            item.id,
+                            unit,
+                            parseFloat(e.target.value),
+                          )
+                        }
+                        className="bg-zinc-800 border-zinc-700 text-white w-24"
+                      />
+                      <span className="text-zinc-400 text-sm">{unit}</span>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => removeFromCart(item.id)}
+                        className="text-zinc-500 hover:text-red-400"
+                      >
+                        <Trash2 className="h-5 w-5" />
+                      </Button>
+                    </div>
+                  </motion.div>
+                );
+              })}
               <div className="flex justify-end pt-8">
                 <Link href="/results" passHref>
                   <Button
