@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import Link from "next/link";
 import { FaAws } from "react-icons/fa";
 import { TbBrandAzure } from "react-icons/tb";
-import { SiLinkerd } from "react-icons/si";
+import { SiLinkerd, SiGooglecloud } from "react-icons/si";
 
 export default function HomePage() {
   return (
@@ -28,10 +28,15 @@ export default function HomePage() {
             className="h-10 w-10 md:h-12 md:w-12 text-[#FF9900]"
             aria-label="AWS"
           />
-          and
+          ,
           <TbBrandAzure
             className="h-10 w-10 md:h-12 md:w-12 text-[#0078D4]"
             aria-label="Azure"
+          />
+          and
+          <SiGooglecloud
+            className="h-10 w-10 md:h-12 md:w-12 text-[#4285F4]"
+            aria-label="Google Cloud Platform"
           />
         </h1>
 
