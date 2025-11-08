@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Silk from "@/components/silk";
 import AddResourceButton from "@/components/add-resource-button";
 import ResourceCard from "@/components/resource-card";
@@ -20,18 +21,22 @@ import {
 import { toast } from "sonner";
 import { useCartStore, CartItem } from "@/lib/cartStore";
 import Link from "next/link";
-import { nanoid } from "nanoid";
 import {
   Empty,
-  EmptyContent,
   EmptyDescription,
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
+import { Spinner } from "@/components/ui/spinner";
 
 export default function CalculatePage() {
   const { items: cartItems, addToCart, clearCart } = useCartStore();
+  const [isHydrated, setIsHydrated] = useState(false);
+
+  useEffect(() => {
+    setIsHydrated(true);
+  }, []);
 
   const handleAddResource = (resource: CartItem) => {
     addToCart(resource);
@@ -73,7 +78,7 @@ export default function CalculatePage() {
                   className="relative border-zinc-700 bg-zinc-900/80 text-zinc-300 hover:bg-zinc-800 hover:text-white"
                   aria-label="View estimate cart"
                 >
-                  {totalCartItems > 0 && (
+                  {isHydrated && totalCartItems > 0 && (
                     <div className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-xs font-bold text-white">
                       {displayCount}
                     </div>
@@ -81,7 +86,7 @@ export default function CalculatePage() {
                   <ShoppingCart className="h-5 w-5" />
                 </Button>
               </Link>
-              {cartItems.length > 0 && (
+              {isHydrated && cartItems.length > 0 && (
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button
@@ -119,7 +124,11 @@ export default function CalculatePage() {
               )}
             </div>
           </div>
-          {cartItems.length > 0 ? (
+          {!isHydrated ? (
+            <div className="min-h-[400px] flex items-center justify-center">
+              <Spinner className="h-12 w-12 text-zinc-500" />
+            </div>
+          ) : cartItems.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               <AnimatePresence>
                 {cartItems.map((item) => (

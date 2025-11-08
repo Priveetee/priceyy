@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { persist, createJSONStorage } from "zustand/middleware";
 
 interface Usage {
   [unit: string]: number;
@@ -20,41 +21,49 @@ interface CartState {
   clearCart: () => void;
 }
 
-export const useCartStore = create<CartState>((set) => ({
-  items: [],
-  addToCart: (itemToAdd) =>
-    set((state) => {
-      const existingItemIndex = state.items.findIndex(
-        (item) =>
-          item.provider === itemToAdd.provider &&
-          item.region === itemToAdd.region &&
-          item.resourceType === itemToAdd.resourceType,
-      );
+export const useCartStore = create<CartState>()(
+  persist(
+    (set) => ({
+      items: [],
+      addToCart: (itemToAdd) =>
+        set((state) => {
+          const existingItemIndex = state.items.findIndex(
+            (item) =>
+              item.provider === itemToAdd.provider &&
+              item.region === itemToAdd.region &&
+              item.resourceType === itemToAdd.resourceType,
+          );
 
-      if (existingItemIndex > -1) {
-        const newItems = [...state.items];
-        const existingItem = newItems[existingItemIndex];
-        const newUsage = { ...existingItem.usage };
+          if (existingItemIndex > -1) {
+            const newItems = [...state.items];
+            const existingItem = newItems[existingItemIndex];
+            const newUsage = { ...existingItem.usage };
 
-        for (const unit in itemToAdd.usage) {
-          newUsage[unit] = (newUsage[unit] || 0) + itemToAdd.usage[unit];
-        }
+            for (const unit in itemToAdd.usage) {
+              newUsage[unit] = (newUsage[unit] || 0) + itemToAdd.usage[unit];
+            }
 
-        newItems[existingItemIndex] = { ...existingItem, usage: newUsage };
-        return { items: newItems };
-      } else {
-        return { items: [...state.items, itemToAdd] };
-      }
+            newItems[existingItemIndex] = { ...existingItem, usage: newUsage };
+            return { items: newItems };
+          } else {
+            return { items: [...state.items, itemToAdd] };
+          }
+        }),
+      removeFromCart: (itemId) =>
+        set((state) => ({
+          items: state.items.filter((item) => item.id !== itemId),
+        })),
+      updateUsage: (itemId, newUsage) =>
+        set((state) => ({
+          items: state.items.map((item) =>
+            item.id === itemId ? { ...item, usage: newUsage } : item,
+          ),
+        })),
+      clearCart: () => set({ items: [] }),
     }),
-  removeFromCart: (itemId) =>
-    set((state) => ({
-      items: state.items.filter((item) => item.id !== itemId),
-    })),
-  updateUsage: (itemId, newUsage) =>
-    set((state) => ({
-      items: state.items.map((item) =>
-        item.id === itemId ? { ...item, usage: newUsage } : item,
-      ),
-    })),
-  clearCart: () => set({ items: [] }),
-}));
+    {
+      name: "priceyy-cart-storage",
+      storage: createJSONStorage(() => localStorage),
+    },
+  ),
+);
