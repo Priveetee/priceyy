@@ -1,11 +1,10 @@
 "use client";
 
-import { useState } from "react";
-import Silk from "@/components/ui/Silk";
-import AddResourceButton from "@/components/ui/AddResourceButton";
-import ResourceCard from "@/components/ui/ResourceCard";
+import Silk from "@/components/silk";
+import AddResourceButton from "@/components/add-resource-button";
+import ResourceCard from "@/components/resource-card";
 import { AnimatePresence, motion } from "framer-motion";
-import { Trash2, ShoppingCart } from "lucide-react";
+import { Trash2, ShoppingCart, PackageOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -22,29 +21,20 @@ import { toast } from "sonner";
 import { useCartStore, CartItem } from "@/lib/cartStore";
 import Link from "next/link";
 import { nanoid } from "nanoid";
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
 
 export default function CalculatePage() {
-  const {
-    items: cartItems,
-    addToCart,
-    clearCart,
-    removeFromCart,
-  } = useCartStore();
+  const { items: cartItems, addToCart, clearCart } = useCartStore();
 
-  const handleAddResource = (
-    resource: Omit<CartItem, "id" | "usage"> & {
-      usage: { unit: string; quantity: number };
-    },
-  ) => {
-    const newCartItem: CartItem = {
-      id: nanoid(),
-      provider: resource.provider,
-      region: resource.region,
-      resourceType: resource.resourceType,
-      usage: { [resource.usage.unit]: resource.usage.quantity },
-    };
-    addToCart(newCartItem);
-    toast.success(`Added "${resource.resourceType}" to your estimate.`);
+  const handleAddResource = (resource: CartItem) => {
+    addToCart(resource);
   };
 
   const handleClearAll = () => {
@@ -67,7 +57,7 @@ export default function CalculatePage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, ease: "easeOut" }}
         >
-          <div className="flex justify-between items-start pt-8 mb-8">
+          <div className="flex justify-between items-center pt-8 mb-8">
             <div>
               <h1 className="text-3xl font-bold text-white">New Estimate</h1>
               <p className="text-zinc-400 mt-1">
@@ -106,7 +96,7 @@ export default function CalculatePage() {
                   <AlertDialogContent className="bg-zinc-900 border-zinc-800">
                     <AlertDialogHeader>
                       <AlertDialogTitle className="text-white">
-                        Are you absolutely sure?
+                        Are you sure?
                       </AlertDialogTitle>
                       <AlertDialogDescription className="text-zinc-400">
                         This will permanently delete all items from your
@@ -138,11 +128,19 @@ export default function CalculatePage() {
               </AnimatePresence>
             </div>
           ) : (
-            <div className="rounded-lg border-2 border-dashed border-zinc-700 p-12 text-center min-h-[400px] flex items-center justify-center">
-              <p className="text-zinc-400">
-                Your selected resources will appear here.
-              </p>
-            </div>
+            <Empty className="border-2 border-dashed border-zinc-700 bg-transparent min-h-[400px]">
+              <EmptyHeader>
+                <EmptyMedia>
+                  <PackageOpen className="h-16 w-16 text-zinc-500" />
+                </EmptyMedia>
+                <EmptyTitle className="text-zinc-300">
+                  No Resources Added
+                </EmptyTitle>
+                <EmptyDescription className="text-zinc-500">
+                  Your selected resources will appear here.
+                </EmptyDescription>
+              </EmptyHeader>
+            </Empty>
           )}
         </motion.div>
       </div>

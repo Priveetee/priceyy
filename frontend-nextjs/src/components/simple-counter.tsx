@@ -1,7 +1,7 @@
 "use client";
 
 import { Plus, Minus } from "lucide-react";
-import { Button } from "./button";
+import { Button } from "./ui/button";
 
 interface SimpleCounterProps {
   value: number;

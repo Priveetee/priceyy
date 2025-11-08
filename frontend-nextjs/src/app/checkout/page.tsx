@@ -1,6 +1,6 @@
 "use client";
 
-import Silk from "@/components/ui/Silk";
+import Silk from "@/components/silk";
 import { useCartStore } from "@/lib/cartStore";
 import { motion } from "framer-motion";
 import { Trash2, Calculator, ArrowLeft } from "lucide-react";

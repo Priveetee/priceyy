@@ -1,6 +1,6 @@
 "use client";
 
-import Silk from "@/components/ui/Silk";
+import Silk from "@/components/silk";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { FaAws } from "react-icons/fa";

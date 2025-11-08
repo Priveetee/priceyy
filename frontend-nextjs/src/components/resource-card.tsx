@@ -2,11 +2,12 @@
 
 import { motion } from "framer-motion";
 import { X } from "lucide-react";
-import { Button } from "./button";
+import { Button } from "./ui/button";
 import { useCartStore, CartItem } from "@/lib/cartStore";
-import { Input } from "./input";
-import AwsLogo from "../icons/AwsLogo";
-import AzureLogo from "../icons/AzureLogo";
+import { Input } from "./ui/input";
+import AwsLogo from "./icons/aws-logo";
+import AzureLogo from "./icons/azure-logo";
+import { Card, CardHeader, CardTitle, CardContent } from "./ui/card";
 
 interface ResourceCardProps {
   resource: CartItem;
@@ -19,7 +20,7 @@ const ProviderIcon = ({ provider }: { provider: string }) => {
     case "azure":
       return <AzureLogo className="h-5 w-5" />;
     case "gcp":
-      return <span className="text-blue-500 font-bold">GCP</span>;
+      return <span className="text-blue-500 font-bold text-sm">GCP</span>;
     default:
       return null;
   }
@@ -44,38 +45,37 @@ export default function ResourceCard({ resource }: ResourceCardProps) {
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.8 }}
       transition={{ type: "spring", stiffness: 300, damping: 30 }}
-      className="relative bg-zinc-900/50 border border-zinc-800 rounded-lg p-6 shadow-lg flex flex-col justify-between gap-4"
     >
-      <div className="flex justify-between items-start">
-        <div className="flex flex-col">
-          <p className="text-white font-medium break-all">
-            {resource.resourceType}
-          </p>
-          <div className="flex items-center gap-2 text-zinc-400 text-sm mt-1">
-            <ProviderIcon provider={resource.provider} />
-            <span>{resource.region}</span>
-          </div>
-        </div>
+      <Card className="relative bg-zinc-900/50 border-zinc-800 text-white">
         <Button
           variant="ghost"
           size="icon"
           onClick={() => removeFromCart(resource.id)}
           className="absolute top-2 right-2 text-zinc-500 hover:text-white"
-          aria-label={`Remove ${resource.resourceType}`}
         >
           <X className="h-4 w-4" />
         </Button>
-      </div>
-
-      <div className="flex items-center gap-2">
-        <Input
-          type="number"
-          value={quantity}
-          onChange={(e) => handleQuantityChange(parseFloat(e.target.value))}
-          className="bg-zinc-800 border-zinc-700 text-white w-24"
-        />
-        <span className="text-zinc-400 text-sm whitespace-nowrap">{unit}</span>
-      </div>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base break-all">
+            <ProviderIcon provider={resource.provider} />
+            {resource.resourceType}
+          </CardTitle>
+          <p className="text-xs text-zinc-400 pt-1">{resource.region}</p>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-2">
+            <Input
+              type="number"
+              value={quantity}
+              onChange={(e) => handleQuantityChange(parseFloat(e.target.value))}
+              className="bg-zinc-800 border-zinc-700 text-white w-24 h-9"
+            />
+            <span className="text-zinc-400 text-sm whitespace-nowrap">
+              {unit}
+            </span>
+          </div>
+        </CardContent>
+      </Card>
     </motion.div>
   );
 }

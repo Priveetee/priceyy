@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import Silk from "@/components/ui/Silk";
+import Silk from "@/components/silk";
 import { useCartStore } from "@/lib/cartStore";
 import { motion } from "framer-motion";
 import { ArrowLeft, Loader2, AlertTriangle } from "lucide-react";
