@@ -78,14 +78,22 @@ def _fetch_and_cache_gcp_data(api_key, cache_file_path):
 
 
 def _sku_to_dict(sku, service_display_name):
-    pricing_expression = []
+    pricing_info_list = []
     if sku.pricing_info:
-        for rate in sku.pricing_info[0].pricing_expression.tiered_rates:
-            pricing_expression.append(
+        for info in sku.pricing_info:
+            tiered_rates = []
+            for rate in info.pricing_expression.tiered_rates:
+                tiered_rates.append(
+                    {
+                        "start_usage_amount": rate.start_usage_amount,
+                        "nanos": rate.unit_price.nanos,
+                        "currency_code": rate.unit_price.currency_code,
+                    }
+                )
+            pricing_info_list.append(
                 {
-                    "start_usage_amount": rate.start_usage_amount,
-                    "nanos": rate.unit_price.nanos,
-                    "currency_code": rate.unit_price.currency_code,
+                    "usage_unit": info.pricing_expression.usage_unit,
+                    "tiered_rates": tiered_rates,
                 }
             )
 
@@ -94,8 +102,7 @@ def _sku_to_dict(sku, service_display_name):
         "description": sku.description,
         "service_display_name": service_display_name,
         "regions": list(sku.geo_taxonomy.regions),
-        "pricing_expression": pricing_expression,
-        "unit": sku.pricing_info[0].pricing_expression.usage_unit,
+        "pricing_info": pricing_info_list,
     }
 
 
@@ -107,25 +114,27 @@ def _process_gcp_cache(cache_file_path):
         with open(cache_file_path, "rb") as f:
             for sku in ijson.items(f, "skus.item"):
                 for region in sku.get("regions", []):
-                    for rate in sku.get("pricing_expression", []):
-                        if (
-                            rate.get("start_usage_amount") == 0
-                            and rate.get("nanos", 0) > 0
-                        ):
-                            price = rate["nanos"] / 1_000_000_000
-                            prices_to_insert.append(
-                                {
-                                    "provider": "gcp",
-                                    "service": sku["service_display_name"],
-                                    "resourceType": sku["description"],
-                                    "region": region,
-                                    "priceModel": "on-demand",
-                                    "pricePerUnit": price,
-                                    "unitOfMeasure": sku.get("unit", "N/A"),
-                                    "currency": rate["currency_code"],
-                                }
-                            )
-                            break
+                    for pricing_info in sku.get("pricing_info", []):
+                        unit_of_measure = pricing_info.get("usage_unit", "N/A")
+                        for rate in pricing_info.get("tiered_rates", []):
+                            if (
+                                rate.get("start_usage_amount") == 0
+                                and rate.get("nanos", 0) > 0
+                            ):
+                                price = rate["nanos"] / 1_000_000_000
+                                prices_to_insert.append(
+                                    {
+                                        "provider": "gcp",
+                                        "service": sku["service_display_name"],
+                                        "resourceType": sku["description"],
+                                        "region": region,
+                                        "priceModel": "on-demand",
+                                        "pricePerUnit": price,
+                                        "unitOfMeasure": unit_of_measure,
+                                        "currency": rate["currency_code"],
+                                    }
+                                )
+                                break
 
         print(f"Transformed {len(prices_to_insert)} GCP prices for database insertion.")
         insert_prices_to_db(prices_to_insert)
