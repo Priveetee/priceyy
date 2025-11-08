@@ -29,14 +29,15 @@ services:
     environment:
       DATABASE_URL: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}"
       GOOGLE_API_KEY: ${GOOGLE_API_KEY}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_DB: ${POSTGRES_DB}
     volumes:
-      - ./worker-python:/app
+      - ./worker-python/cache:/app/cache
     networks:
       - priceyy_network
     depends_on:
       postgres:
         condition: service_healthy
-    command: sleep infinity
 
   api:
     build:
@@ -57,19 +58,15 @@ services:
   frontend:
     build:
       context: ./frontend-nextjs
-      dockerfile: Dockerfile.dev
+      dockerfile: Dockerfile
     container_name: priceyy-frontend
     restart: unless-stopped
     ports:
       - "3000:3000"
-    volumes:
-      - ./frontend-nextjs:/app
-      - /app/node_modules
-      - /app/.next
     networks:
       - priceyy_network
-    environment:
-      - NEXT_PUBLIC_API_URL=http://api:8080
+    depends_on:
+      - api
 
 volumes:
   postgres_data:

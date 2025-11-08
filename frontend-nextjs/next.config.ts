@@ -1,8 +1,7 @@
-// next.config.ts
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Pas de turbopack pour Tailwind v4
+  output: "standalone",
   experimental: {
     optimizePackageImports: ["framer-motion", "lucide-react"],
   },
