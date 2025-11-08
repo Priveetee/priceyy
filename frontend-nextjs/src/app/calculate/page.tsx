@@ -1,6 +1,5 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import Silk from "@/components/silk";
 import AddResourceButton from "@/components/add-resource-button";
 import ResourceCard from "@/components/resource-card";
@@ -29,14 +28,11 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty";
 import { Spinner } from "@/components/ui/spinner";
+import { useHydration } from "@/lib/use-hydration";
 
 export default function CalculatePage() {
   const { items: cartItems, addToCart, clearCart } = useCartStore();
-  const [isHydrated, setIsHydrated] = useState(false);
-
-  useEffect(() => {
-    setIsHydrated(true);
-  }, []);
+  const isHydrated = useHydration();
 
   const handleAddResource = (resource: CartItem) => {
     addToCart(resource);

@@ -29,9 +29,9 @@ type CalculationItem struct {
 }
 
 type UsageCost struct {
-	Unit         string  `json:"unit"`
-	Quantity     float64 `json:"quantity"`
-	CostPerMonth float64 `json:"costPerMonth"`
+	Unit     string  `json:"unit"`
+	Quantity float64 `json:"quantity"`
+	Cost     float64 `json:"cost"`
 }
 
 type ServiceCost struct {
@@ -42,14 +42,13 @@ type ServiceCost struct {
 }
 
 type CalculationResult struct {
-	TotalCostPerMonth float64       `json:"totalCostPerMonth"`
-	Breakdown         []ServiceCost `json:"breakdown"`
+	TotalCost float64       `json:"totalCost"`
+	Breakdown []ServiceCost `json:"breakdown"`
 }
 
 func (s *PriceService) Calculate(ctx context.Context, items []CalculationItem) (*CalculationResult, error) {
 	var totalCost float64
 	var breakdown []ServiceCost
-	hoursPerMonth := 730.0
 
 	for _, item := range items {
 		priceRecords, err := s.repo.FindPrices(ctx, item.Provider, item.ResourceType, item.Region, "on-demand")
@@ -71,19 +70,13 @@ func (s *PriceService) Calculate(ctx context.Context, items []CalculationItem) (
 				continue
 			}
 
-			var cost float64
-			switch unit {
-			case "Hrs", "1 Hour":
-				cost = quantity * pricePerUnit * hoursPerMonth
-			default:
-				cost = quantity * pricePerUnit
-			}
+			cost := quantity * pricePerUnit
 
 			serviceTotalCost += cost
 			usageBreakdown = append(usageBreakdown, UsageCost{
-				Unit:         unit,
-				Quantity:     quantity,
-				CostPerMonth: cost,
+				Unit:     unit,
+				Quantity: quantity,
+				Cost:     cost,
 			})
 		}
 
@@ -97,8 +90,8 @@ func (s *PriceService) Calculate(ctx context.Context, items []CalculationItem) (
 	}
 
 	return &CalculationResult{
-		TotalCostPerMonth: totalCost,
-		Breakdown:         breakdown,
+		TotalCost: totalCost,
+		Breakdown: breakdown,
 	}, nil
 }
 

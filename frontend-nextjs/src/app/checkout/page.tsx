@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Silk from "@/components/silk";
 import { useCartStore } from "@/lib/cartStore";
 import { motion } from "framer-motion";
@@ -29,19 +29,16 @@ import {
 } from "@/components/ui/empty";
 import { PackageOpen } from "lucide-react";
 import { Spinner } from "@/components/ui/spinner";
+import { useHydration } from "@/lib/use-hydration";
 
 const PRESET_QUANTITIES = [1, 8, 24, 730];
 
 export default function CheckoutPage() {
   const { items, removeFromCart, updateUsage } = useCartStore();
-  const [isHydrated, setIsHydrated] = useState(false);
+  const isHydrated = useHydration();
   const [customQuantity, setCustomQuantity] = useState<Record<string, boolean>>(
     {},
   );
-
-  useEffect(() => {
-    setIsHydrated(true);
-  }, []);
 
   const handleQuantitySelect = (
     itemId: string,

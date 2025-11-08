@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import Silk from "@/components/silk";
 import { useCartStore } from "@/lib/cartStore";
 import { motion } from "framer-motion";
@@ -23,22 +23,19 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { useHydration } from "@/lib/use-hydration";
 
 export default function ResultsPage() {
   const { items } = useCartStore();
-  const [isHydrated, setIsHydrated] = useState(false);
+  const isHydrated = useHydration();
   const calculateMutation = trpc.calculate.useMutation();
 
   useEffect(() => {
-    setIsHydrated(true);
-  }, []);
-
-  useEffect(() => {
-    if (isHydrated && items.length > 0) {
+    if (isHydrated && items.length > 0 && calculateMutation.isIdle) {
       const servicesToCalculate = items.map(({ id, ...rest }) => rest);
       calculateMutation.mutate(servicesToCalculate);
     }
-  }, [isHydrated, items]);
+  }, [isHydrated, items, calculateMutation]);
 
   const ResultContent = () => {
     if (!isHydrated) {
@@ -116,7 +113,7 @@ export default function ResultsPage() {
           <CardFooter className="flex justify-between items-center bg-zinc-800/50 p-4 mt-4 rounded-b-lg">
             <p className="text-lg font-bold">Estimated Total</p>
             <p className="text-2xl font-bold text-green-400">
-              ${calculateMutation.data.totalCostPerMonth.toFixed(2)} / month
+              ${calculateMutation.data.totalCost.toFixed(2)}
             </p>
           </CardFooter>
         </Card>

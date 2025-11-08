@@ -42,7 +42,7 @@ export default function HomePage() {
 
         <div className="mt-12 flex items-center gap-4">
           <p className="text-xl text-zinc-300">Interested?</p>
-          <Link href="/login" aria-label="Go to login page">
+          <Link href="/calculate" aria-label="Go to calculate page">
             <SiLinkerd className="h-10 w-10 text-[#2BEDA7] cursor-pointer transition-transform hover:scale-110" />
           </Link>
         </div>
