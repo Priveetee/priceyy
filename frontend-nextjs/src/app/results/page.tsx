@@ -1,24 +1,130 @@
 "use client";
 
-import { useEffect } from "react";
+import { useState, useEffect } from "react";
 import Silk from "@/components/silk";
 import { useCartStore } from "@/lib/cartStore";
 import { motion } from "framer-motion";
-import { ArrowLeft, Loader2, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Loader2, AlertTriangle, ServerCrash } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { trpc } from "@/lib/trpc/client";
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
+import { Spinner } from "@/components/ui/spinner";
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 
 export default function ResultsPage() {
   const { items } = useCartStore();
+  const [isHydrated, setIsHydrated] = useState(false);
   const calculateMutation = trpc.calculate.useMutation();
 
   useEffect(() => {
-    if (items.length > 0) {
+    setIsHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    if (isHydrated && items.length > 0) {
       const servicesToCalculate = items.map(({ id, ...rest }) => rest);
       calculateMutation.mutate(servicesToCalculate);
     }
-  }, [items, calculateMutation]);
+  }, [isHydrated, items]);
+
+  const ResultContent = () => {
+    if (!isHydrated) {
+      return (
+        <div className="flex justify-center items-center h-64">
+          <Spinner className="h-12 w-12" />
+        </div>
+      );
+    }
+
+    if (items.length === 0) {
+      return (
+        <Empty className="bg-transparent">
+          <EmptyHeader>
+            <EmptyMedia>
+              <ServerCrash className="h-16 w-16 text-zinc-500" />
+            </EmptyMedia>
+            <EmptyTitle className="text-zinc-300">
+              No Items to Calculate
+            </EmptyTitle>
+            <EmptyDescription className="text-zinc-500">
+              Your estimate is empty. Add some resources to see the results.
+            </EmptyDescription>
+          </EmptyHeader>
+        </Empty>
+      );
+    }
+
+    if (calculateMutation.isPending) {
+      return (
+        <div className="flex justify-center items-center h-64">
+          <Spinner className="h-12 w-12" />
+        </div>
+      );
+    }
+
+    if (calculateMutation.isError) {
+      return (
+        <Empty className="bg-transparent">
+          <EmptyHeader>
+            <EmptyMedia>
+              <AlertTriangle className="h-16 w-16 text-red-500" />
+            </EmptyMedia>
+            <EmptyTitle className="text-red-400">Calculation Failed</EmptyTitle>
+            <EmptyDescription className="text-zinc-400">
+              {calculateMutation.error.message}
+            </EmptyDescription>
+          </EmptyHeader>
+        </Empty>
+      );
+    }
+
+    if (calculateMutation.isSuccess) {
+      return (
+        <Card className="bg-zinc-900/50 border-zinc-800 text-white">
+          <CardHeader>
+            <CardTitle>Cost Breakdown</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {calculateMutation.data.breakdown.map(
+              (item: any, index: number) => (
+                <div
+                  key={index}
+                  className="flex justify-between items-center p-3 bg-zinc-800/50 rounded-md"
+                >
+                  <div>
+                    <p className="font-medium">{item.resourceType}</p>
+                    <p className="text-xs text-zinc-400">{item.region}</p>
+                  </div>
+                  <p className="font-semibold">${item.totalCost.toFixed(2)}</p>
+                </div>
+              ),
+            )}
+          </CardContent>
+          <CardFooter className="flex justify-between items-center bg-zinc-800/50 p-4 mt-4 rounded-b-lg">
+            <p className="text-lg font-bold">Estimated Total</p>
+            <p className="text-2xl font-bold text-green-400">
+              ${calculateMutation.data.totalCostPerMonth.toFixed(2)} / month
+            </p>
+          </CardFooter>
+        </Card>
+      );
+    }
+
+    return null;
+  };
 
   return (
     <div className="relative min-h-screen w-full">
@@ -51,62 +157,7 @@ export default function ResultsPage() {
             </p>
           </div>
 
-          <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg shadow-lg">
-            <div className="p-6">
-              <h2 className="text-xl font-semibold text-white">Summary</h2>
-            </div>
-            {calculateMutation.isPending && (
-              <div className="p-12 flex justify-center items-center">
-                <Loader2 className="h-8 w-8 animate-spin text-zinc-400" />
-              </div>
-            )}
-            {calculateMutation.isError && (
-              <div className="p-12 text-center text-red-400 flex flex-col items-center gap-4">
-                <AlertTriangle className="h-8 w-8" />
-                <p>Calculation failed: {calculateMutation.error.message}</p>
-              </div>
-            )}
-            {calculateMutation.isSuccess && (
-              <>
-                <ul className="border-t border-b border-zinc-800">
-                  {calculateMutation.data.breakdown.map(
-                    (item: any, index: number) => (
-                      <li
-                        key={index}
-                        className="flex justify-between items-center p-4 border-b border-zinc-800 last:border-b-0"
-                      >
-                        <div>
-                          <span className="text-zinc-200">
-                            {item.resourceType}
-                          </span>
-                          <span className="text-xs text-zinc-500 block">
-                            {item.region}
-                          </span>
-                        </div>
-                        <span className="text-white font-medium">
-                          ${item.totalCost.toFixed(2)}
-                        </span>
-                      </li>
-                    ),
-                  )}
-                </ul>
-                <div className="p-6 flex justify-between items-center">
-                  <span className="text-lg font-semibold text-white">
-                    Estimated Total
-                  </span>
-                  <span className="text-2xl font-bold text-green-400">
-                    ${calculateMutation.data.totalCostPerMonth.toFixed(2)} /
-                    month
-                  </span>
-                </div>
-              </>
-            )}
-            {!calculateMutation.isPending && items.length === 0 && (
-              <div className="p-12 text-center text-zinc-400">
-                No items in the estimate to calculate.
-              </div>
-            )}
-          </div>
+          <ResultContent />
         </motion.div>
       </div>
     </div>
