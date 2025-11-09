@@ -46,9 +46,7 @@ dist/
 *.egg
 
 # Node build artifacts
-/frontend-nextjs/.next/
 /frontend-nextjs/out/
-/frontend-nextjs/build/
 /frontend-nextjs/node_modules/
 
 # Test reports

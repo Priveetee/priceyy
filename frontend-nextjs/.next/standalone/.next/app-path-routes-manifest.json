@@ -1,0 +1,11 @@
+{
+  "/(app)/page": "/",
+  "/(auth)/login/page": "/login",
+  "/_not-found/page": "/_not-found",
+  "/api/chat/route": "/api/chat",
+  "/api/trpc/[trpc]/route": "/api/trpc/[trpc]",
+  "/calculate/page": "/calculate",
+  "/checkout/page": "/checkout",
+  "/favicon.ico/route": "/favicon.ico",
+  "/results/page": "/results"
+}
