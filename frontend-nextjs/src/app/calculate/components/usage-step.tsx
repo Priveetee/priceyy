@@ -2,20 +2,11 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { motion } from "framer-motion";
 import { trpc } from "@/lib/trpc/client";
 import { Spinner } from "@/components/ui/spinner";
-import {
-  Empty,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-} from "@/components/ui/empty";
-import { PackageOpen } from "lucide-react";
+import { QuantityInput } from "@/components/quantity-input";
 import { cn } from "@/lib/utils";
 
 interface ResourceOption {
@@ -36,6 +27,9 @@ interface UsageStepProps {
   resources: string[];
   onComplete: (usages: Record<string, UsageInfo>) => void;
 }
+
+const PRESET_USAGE_QUANTITIES = [1, 8, 24, 730];
+const PRESET_INSTANCE_QUANTITIES = [1, 2, 4, 8];
 
 const isFixedUnit = (unit: string) => unit === "1";
 
@@ -70,21 +64,15 @@ function ResourceUsageEditor({
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center p-4">
+      <div className="flex items-center justify-center p-8">
         <Spinner />
       </div>
     );
   }
 
-  if (isError || !options) {
+  if (isError || !options || options.length === 0) {
     return (
-      <div className="text-red-400 p-4">Error fetching pricing options.</div>
-    );
-  }
-
-  if (options.length === 0) {
-    return (
-      <div className="text-zinc-500 p-4">
+      <div className="text-zinc-500 p-4 text-center">
         No pricing options available for this resource.
       </div>
     );
@@ -97,18 +85,18 @@ function ResourceUsageEditor({
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-2">
-        <Label className="text-sm text-zinc-400">Pricing Option</Label>
+        <p className="text-sm font-medium text-zinc-400">Pricing Option</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           {options.map((opt) => (
             <Button
               key={`${opt.priceModel}-${opt.unitOfMeasure}`}
               variant="outline"
               className={cn(
-                "h-auto flex flex-col items-start p-2 text-left",
+                "h-auto flex flex-col items-start p-2 text-left bg-zinc-950/50 hover:bg-zinc-800/50",
                 usageInfo.selectedOption?.priceModel === opt.priceModel &&
                   usageInfo.selectedOption?.unitOfMeasure === opt.unitOfMeasure
-                  ? "border-green-500 bg-green-900/20"
-                  : "border-zinc-700 bg-zinc-950",
+                  ? "border-green-500 bg-green-900/30"
+                  : "border-zinc-700",
               )}
               onClick={() => updateUsage({ selectedOption: opt })}
             >
@@ -124,40 +112,26 @@ function ResourceUsageEditor({
       </div>
 
       {usageInfo.selectedOption && (
-        <div className="grid grid-cols-2 gap-4 items-center">
-          {isUsageInputVisible && (
-            <div className="space-y-1">
-              <Label className="text-sm text-zinc-400">Usage</Label>
-              <Input
-                type="number"
-                value={usageInfo.usageQuantity}
-                onChange={(e) =>
-                  updateUsage({
-                    usageQuantity: parseInt(e.target.value, 10) || 0,
-                  })
-                }
-                className="bg-black border-zinc-700"
-              />
-            </div>
-          )}
-          <div
-            className="space-y-1"
-            style={{ gridColumn: isUsageInputVisible ? "span 1" : "span 2" }}
-          >
-            <Label className="text-sm text-zinc-400">
-              {isFixedUnit(usageInfo.selectedOption.unitOfMeasure)
+        <div className="flex flex-col gap-3 rounded-md bg-zinc-950/50 p-3 border border-zinc-800">
+          <QuantityInput
+            label={
+              isFixedUnit(usageInfo.selectedOption.unitOfMeasure)
                 ? "Quantity"
-                : "Instances"}
-            </Label>
-            <Input
-              type="number"
-              value={usageInfo.count}
-              onChange={(e) =>
-                updateUsage({ count: parseInt(e.target.value, 10) || 1 })
-              }
-              className="bg-black border-zinc-700"
+                : "Instances"
+            }
+            value={usageInfo.count}
+            onChange={(count) => updateUsage({ count })}
+            presets={PRESET_INSTANCE_QUANTITIES}
+          />
+
+          {isUsageInputVisible && (
+            <QuantityInput
+              label={`Usage (${usageInfo.selectedOption.unitOfMeasure})`}
+              value={usageInfo.usageQuantity}
+              onChange={(usageQuantity) => updateUsage({ usageQuantity })}
+              presets={PRESET_USAGE_QUANTITIES}
             />
-          </div>
+          )}
         </div>
       )}
     </div>
@@ -192,37 +166,23 @@ export function UsageStep({
       transition={{ duration: 0.3 }}
       className="p-6 flex flex-col h-[450px] gap-4"
     >
-      <ScrollArea className="flex-1 min-h-0 rounded-md border border-zinc-800 bg-zinc-950 p-2">
-        {resources.length > 0 ? (
-          <div className="flex flex-col gap-4 pr-2">
-            {resources.map((r) => (
-              <div
-                key={r}
-                className="p-4 border-2 border-zinc-800 bg-zinc-900 rounded-lg"
-              >
-                <p className="text-sm font-medium text-white mb-3">{r}</p>
-                <ResourceUsageEditor
-                  provider={provider}
-                  region={region}
-                  resourceType={r}
-                  onUsageChange={(usage) => handleUsageChange(r, usage)}
-                />
-              </div>
-            ))}
-          </div>
-        ) : (
-          <Empty>
-            <EmptyHeader>
-              <EmptyMedia>
-                <PackageOpen />
-              </EmptyMedia>
-              <EmptyTitle>No resources selected</EmptyTitle>
-              <EmptyDescription>
-                Go back to select some resources first.
-              </EmptyDescription>
-            </EmptyHeader>
-          </Empty>
-        )}
+      <ScrollArea className="flex-1 min-h-0 -mr-2 pr-2">
+        <div className="flex flex-col gap-4 pr-2">
+          {resources.map((r) => (
+            <div
+              key={r}
+              className="p-4 border border-zinc-800 bg-zinc-900/70 rounded-lg"
+            >
+              <p className="text-base font-semibold text-white mb-3">{r}</p>
+              <ResourceUsageEditor
+                provider={provider}
+                region={region}
+                resourceType={r}
+                onUsageChange={(usage) => handleUsageChange(r, usage)}
+              />
+            </div>
+          ))}
+        </div>
       </ScrollArea>
       <Button
         onClick={() => onComplete(allUsages)}
