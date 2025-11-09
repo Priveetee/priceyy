@@ -51,7 +51,7 @@ export async function POST(req: Request) {
   }
 
   const result = await streamText({
-    model: openrouter("openai/gpt-oss-20b:free"),
+    model: openrouter("openrouter/polaris-alpha"),
     system: systemMessage,
     messages: processedMessages,
   });
