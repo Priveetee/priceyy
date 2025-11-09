@@ -80,12 +80,10 @@ const MessageAvatar = React.forwardRef<
     <AvatarFallback>
       {name
         ?.split(" ")
-        .map((n) => n[0])
+        .map((n: string) => n[0])
         .slice(0, 2)
         .join("")}
     </AvatarFallback>
   </Avatar>
 ));
 MessageAvatar.displayName = "MessageAvatar";
-
-export { Message, MessageContent, MessageAvatar };
