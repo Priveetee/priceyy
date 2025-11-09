@@ -5,6 +5,10 @@ import { motion } from "framer-motion";
 import { Button } from "./ui/button";
 import { Trash2 } from "lucide-react";
 import { QuantityInput } from "./quantity-input";
+import {
+  ProviderIconMap,
+  getRegionIcon,
+} from "@/components/icons/provider-icons";
 
 interface ResourceCardProps {
   resource: CartItem;
@@ -27,14 +31,20 @@ export default function ResourceCard({ resource }: ResourceCardProps) {
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.9 }}
       transition={{ duration: 0.3 }}
-      className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-4 flex flex-col gap-4 shadow-lg hover:border-zinc-700"
+      className="bg-gradient-to-br from-zinc-800/80 to-zinc-900/60 border border-zinc-700 rounded-lg p-4 flex flex-col gap-4 shadow-lg hover:border-zinc-600"
     >
       <div className="flex justify-between items-start">
-        <div className="flex flex-col gap-1 pr-2">
-          <p className="font-semibold text-zinc-200">{resource.resourceType}</p>
-          <p className="text-sm text-zinc-500">
-            {resource.provider} - {resource.region}
-          </p>
+        <div className="flex flex-col gap-2 pr-2">
+          <p className="font-semibold text-white">{resource.resourceType}</p>
+          <div className="flex items-center gap-2 text-sm text-zinc-400">
+            {ProviderIconMap[resource.provider.toLowerCase()]}
+            <div className="flex items-center gap-1.5">
+              <div className="flex-shrink-0 w-5 flex items-center justify-center">
+                {getRegionIcon(resource.region)}
+              </div>
+              <span>{resource.region}</span>
+            </div>
+          </div>
         </div>
         <Button
           variant="ghost"
@@ -46,7 +56,7 @@ export default function ResourceCard({ resource }: ResourceCardProps) {
         </Button>
       </div>
 
-      <div className="flex flex-col gap-3 bg-zinc-950/50 p-3 rounded-md border border-zinc-800">
+      <div className="flex flex-col gap-3 bg-zinc-950/30 p-3 rounded-lg border border-zinc-800">
         <QuantityInput
           label={isFixed ? "Quantity" : "Instances"}
           value={resource.count}
@@ -66,7 +76,7 @@ export default function ResourceCard({ resource }: ResourceCardProps) {
         )}
       </div>
       <div className="flex justify-end">
-        <div className="px-2 py-0.5 bg-zinc-700/50 text-xs text-zinc-300 rounded-md">
+        <div className="px-2.5 py-1 bg-zinc-800 text-xs text-zinc-200 font-medium rounded-full">
           {resource.priceModel}
         </div>
       </div>

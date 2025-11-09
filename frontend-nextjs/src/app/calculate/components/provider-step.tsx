@@ -1,15 +1,11 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { ArrowRight, ChevronDown } from "lucide-react";
 import { motion } from "framer-motion";
 import { trpc } from "@/lib/trpc/client";
+import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
+import { ProviderIconMap } from "@/components/icons/provider-icons";
+import { ArrowRight } from "lucide-react";
 import { useState } from "react";
 
 interface ProviderStepProps {
@@ -17,44 +13,48 @@ interface ProviderStepProps {
 }
 
 export function ProviderStep({ onSelect }: ProviderStepProps) {
-  const [selectedProvider, setSelectedProvider] = useState("aws");
-  const providersQuery = trpc.getProviders.useQuery();
+  const { data: providers, isLoading } = trpc.getProviders.useQuery();
+  const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
 
   return (
     <motion.div
       key="provider"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="flex flex-col items-center justify-center h-[200px] gap-8"
+      initial={{ opacity: 0, x: 20 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: -20 }}
+      transition={{ duration: 0.3 }}
+      className="p-6 flex flex-col h-[350px] gap-4"
     >
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
+      {isLoading && (
+        <div className="flex-1 flex items-center justify-center">
+          <Spinner />
+        </div>
+      )}
+      <div className="flex-1 space-y-2">
+        {providers?.map((p) => (
           <Button
+            key={p}
             variant="outline"
-            className="w-56 h-11 text-base text-zinc-200 bg-zinc-800/50 border-zinc-700 hover:bg-zinc-800 hover:border-zinc-600 focus:ring-zinc-500"
+            className={`w-full justify-start p-4 h-auto text-base ${
+              selectedProvider === p
+                ? "bg-zinc-100 text-zinc-900 border-zinc-300"
+                : "bg-zinc-900 border-zinc-800 hover:bg-zinc-800 hover:text-white"
+            }`}
+            onClick={() => setSelectedProvider(p)}
           >
-            {selectedProvider.toUpperCase()}
-            <ChevronDown className="ml-auto h-4 w-4 text-zinc-500" />
+            <div className="flex items-center gap-3">
+              {ProviderIconMap[p.toLowerCase()]}
+              <span className="font-semibold">{p.toUpperCase()}</span>
+            </div>
           </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent className="w-56 bg-zinc-900 border-zinc-700 text-zinc-200">
-          {providersQuery.data?.map((p) => (
-            <DropdownMenuItem
-              key={p}
-              onSelect={() => setSelectedProvider(p)}
-              className="focus:bg-zinc-800"
-            >
-              {p.toUpperCase()}
-            </DropdownMenuItem>
-          ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
-      <div className="flex justify-end w-full px-6">
+        ))}
+      </div>
+      <div className="flex justify-end">
         <Button
-          variant="outline"
           size="icon"
-          onClick={() => onSelect(selectedProvider)}
-          className="border-zinc-700 bg-transparent hover:bg-zinc-800"
+          onClick={() => onSelect(selectedProvider!)}
+          disabled={!selectedProvider}
+          className="bg-zinc-800 hover:bg-zinc-700 disabled:opacity-20"
         >
           <ArrowRight className="h-4 w-4" />
         </Button>
