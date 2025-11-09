@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net/http"
 	"os"
@@ -8,8 +9,10 @@ import (
 	"priceyy/api/internal/handler"
 	"priceyy/api/internal/repository"
 	"priceyy/api/internal/service"
+	"time"
 
 	_ "github.com/lib/pq"
+	"github.com/rs/cors"
 )
 
 func main() {
@@ -19,26 +22,49 @@ func main() {
 	}
 	connectionString := dbURL + "?sslmode=disable"
 
-	client, err := ent.Open("postgres", connectionString)
+	var client *ent.Client
+	var err error
+	for i := 0; i < 5; i++ {
+		client, err = ent.Open("postgres", connectionString)
+		if err == nil {
+			break
+		}
+		log.Printf("failed to connect to postgres (attempt %d): %v", i+1, err)
+		time.Sleep(2 * time.Second)
+	}
 	if err != nil {
 		log.Fatalf("failed opening connection to postgres: %v", err)
 	}
 	defer client.Close()
 
+	if err := client.Schema.Create(context.Background()); err != nil {
+		log.Fatalf("failed creating schema resources: %v", err)
+	}
+
 	priceRepo := repository.NewPriceRepository(client)
 	priceService := service.NewPriceService(priceRepo)
 	priceHandler := handler.NewPriceHandler(priceService)
 
-	http.HandleFunc("/calculate", priceHandler.HandleCalculate)
-	http.HandleFunc("/providers", priceHandler.HandleGetProviders)
-	http.HandleFunc("/regions", priceHandler.HandleGetRegions)
-	http.HandleFunc("/resources", priceHandler.HandleGetResourceTypes)
-	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/calculate", priceHandler.HandleCalculate)
+	mux.HandleFunc("/providers", priceHandler.HandleGetProviders)
+	mux.HandleFunc("/regions", priceHandler.HandleGetRegions)
+	mux.HandleFunc("/resources", priceHandler.HandleGetResourceTypes)
+	mux.HandleFunc("/resource-options", priceHandler.HandleGetResourceOptions)
+	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
 
+	c := cors.New(cors.Options{
+		AllowedOrigins: []string{"*"},
+		AllowedMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedHeaders: []string{"*"},
+	})
+
+	handler := c.Handler(mux)
+
 	log.Println("Starting server on port 8080")
-	if err := http.ListenAndServe(":8080", nil); err != nil {
+	if err := http.ListenAndServe(":8080", handler); err != nil {
 		log.Fatal(err)
 	}
 }

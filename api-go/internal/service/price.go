@@ -2,12 +2,13 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"priceyy/api/ent"
-	"strings"
 )
 
 type PriceRepository interface {
-	FindPrices(ctx context.Context, provider, resourceType, region, priceModel string) ([]*ent.Price, error)
+	FindPrices(ctx context.Context, provider, resourceType, region, priceModel, unitOfMeasure string) ([]*ent.Price, error)
+	FindResourceOptions(ctx context.Context, provider, resourceType, region string) ([]*ent.Price, error)
 	ListDistinctProviders(ctx context.Context) ([]string, error)
 	ListDistinctRegions(ctx context.Context, provider string) ([]string, error)
 	ListDistinctResourceTypes(ctx context.Context, provider, region, query string) ([]string, error)
@@ -22,10 +23,12 @@ func NewPriceService(repo PriceRepository) *PriceService {
 }
 
 type CalculationItem struct {
-	Provider     string
-	ResourceType string
-	Region       string
-	Usage        map[string]float64
+	Provider      string
+	ResourceType  string
+	Region        string
+	PriceModel    string
+	UnitOfMeasure string
+	Quantity      float64
 }
 
 type UsageCost struct {
@@ -46,12 +49,48 @@ type CalculationResult struct {
 	Breakdown []ServiceCost `json:"breakdown"`
 }
 
+type ResourceOption struct {
+	PriceModel    string  `json:"priceModel"`
+	UnitOfMeasure string  `json:"unitOfMeasure"`
+	PricePerUnit  float64 `json:"pricePerUnit"`
+}
+
+func (s *PriceService) GetResourceOptions(ctx context.Context, provider, resourceType, region string) ([]ResourceOption, error) {
+	records, err := s.repo.FindResourceOptions(ctx, provider, resourceType, region)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(records) == 0 {
+		return []ResourceOption{}, nil
+	}
+
+	optionsMap := make(map[string]ResourceOption)
+	for _, r := range records {
+		key := fmt.Sprintf("%s-%s", r.PriceModel, r.UnitOfMeasure)
+		if _, exists := optionsMap[key]; !exists {
+			optionsMap[key] = ResourceOption{
+				PriceModel:    r.PriceModel,
+				UnitOfMeasure: r.UnitOfMeasure,
+				PricePerUnit:  r.PricePerUnit,
+			}
+		}
+	}
+
+	options := make([]ResourceOption, 0, len(optionsMap))
+	for _, option := range optionsMap {
+		options = append(options, option)
+	}
+
+	return options, nil
+}
+
 func (s *PriceService) Calculate(ctx context.Context, items []CalculationItem) (*CalculationResult, error) {
 	var totalCost float64
 	var breakdown []ServiceCost
 
 	for _, item := range items {
-		priceRecords, err := s.repo.FindPrices(ctx, item.Provider, item.ResourceType, item.Region, "on-demand")
+		priceRecords, err := s.repo.FindPrices(ctx, item.Provider, item.ResourceType, item.Region, item.PriceModel, item.UnitOfMeasure)
 		if err != nil {
 			return nil, err
 		}
@@ -60,23 +99,14 @@ func (s *PriceService) Calculate(ctx context.Context, items []CalculationItem) (
 		var usageBreakdown []UsageCost
 
 		if len(priceRecords) > 0 {
-			priceMap := make(map[string]float64)
-			for _, p := range priceRecords {
-				priceMap[strings.ToLower(p.UnitOfMeasure)] = p.PricePerUnit
-			}
-
-			for unit, quantity := range item.Usage {
-				pricePerUnit, ok := priceMap[strings.ToLower(unit)]
-				if ok {
-					cost := quantity * pricePerUnit
-					serviceTotalCost += cost
-					usageBreakdown = append(usageBreakdown, UsageCost{
-						Unit:     unit,
-						Quantity: quantity,
-						Cost:     cost,
-					})
-				}
-			}
+			priceRecord := priceRecords[0]
+			cost := item.Quantity * priceRecord.PricePerUnit
+			serviceTotalCost += cost
+			usageBreakdown = append(usageBreakdown, UsageCost{
+				Unit:     item.UnitOfMeasure,
+				Quantity: item.Quantity,
+				Cost:     cost,
+			})
 		}
 
 		totalCost += serviceTotalCost

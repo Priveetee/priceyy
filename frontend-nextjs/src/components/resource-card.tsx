@@ -1,81 +1,63 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { X } from "lucide-react";
-import { Button } from "./ui/button";
 import { useCartStore, CartItem } from "@/lib/cartStore";
-import { Input } from "./ui/input";
-import AwsLogo from "./icons/aws-logo";
-import AzureLogo from "./icons/azure-logo";
-import { Card, CardHeader, CardTitle, CardContent } from "./ui/card";
+import { Button } from "./ui/button";
+import { Trash2 } from "lucide-react";
 
 interface ResourceCardProps {
   resource: CartItem;
 }
 
-const ProviderIcon = ({ provider }: { provider: string }) => {
-  switch (provider.toLowerCase()) {
-    case "aws":
-      return <AwsLogo className="h-5 w-5" />;
-    case "azure":
-      return <AzureLogo className="h-5 w-5" />;
-    case "gcp":
-      return <span className="text-blue-500 font-bold text-sm">GCP</span>;
-    default:
-      return null;
-  }
-};
+const isFixedUnit = (unit: string) => unit === "1";
 
 export default function ResourceCard({ resource }: ResourceCardProps) {
-  const { removeFromCart, updateUsage } = useCartStore();
+  const { removeFromCart } = useCartStore();
 
-  const unit = Object.keys(resource.usage)[0] || "N/A";
-  const quantity = resource.usage[unit] || 0;
-
-  const handleQuantityChange = (newQuantity: number) => {
-    if (newQuantity >= 0) {
-      updateUsage(resource.id, { [unit]: newQuantity });
-    }
-  };
+  const isFixed = isFixedUnit(resource.unitOfMeasure);
 
   return (
     <motion.div
       layout
-      initial={{ opacity: 0, scale: 0.8 }}
+      initial={{ opacity: 0, scale: 0.9 }}
       animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.8 }}
-      transition={{ type: "spring", stiffness: 300, damping: 30 }}
+      exit={{ opacity: 0, scale: 0.9 }}
+      transition={{ duration: 0.3 }}
+      className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-4 flex flex-col gap-3 shadow-lg"
     >
-      <Card className="relative bg-zinc-900/50 border-zinc-800 text-white">
+      <div className="flex justify-between items-start">
+        <div className="flex flex-col gap-1 pr-2">
+          <p className="font-semibold text-zinc-200">{resource.resourceType}</p>
+          <p className="text-sm text-zinc-500">
+            {resource.provider} - {resource.region}
+          </p>
+        </div>
         <Button
           variant="ghost"
           size="icon"
+          className="text-zinc-500 hover:text-red-400 flex-shrink-0"
           onClick={() => removeFromCart(resource.id)}
-          className="absolute top-2 right-2 text-zinc-500 hover:text-white"
         >
-          <X className="h-4 w-4" />
+          <Trash2 className="h-5 w-5" />
         </Button>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base break-all">
-            <ProviderIcon provider={resource.provider} />
-            {resource.resourceType}
-          </CardTitle>
-          <p className="text-xs text-zinc-400 pt-1">{resource.region}</p>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center gap-2">
-            <Input
-              type="number"
-              value={quantity}
-              onChange={(e) => handleQuantityChange(parseFloat(e.target.value))}
-              className="bg-zinc-800 border-zinc-700 text-white w-24 h-9"
-            />
-            <span className="text-zinc-400 text-sm whitespace-nowrap">
-              {unit}
+      </div>
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+        <div className="px-2 py-0.5 bg-zinc-700/50 text-zinc-300 rounded-md">
+          {resource.priceModel}
+        </div>
+        <div className="flex items-center gap-1.5 text-zinc-400">
+          <span>{isFixed ? "Quantity:" : "Instances:"}</span>
+          <span className="font-bold text-zinc-200">{resource.count}</span>
+        </div>
+        {!isFixed && (
+          <div className="flex items-center gap-1.5 text-zinc-400">
+            <span>Usage:</span>
+            <span className="font-bold text-zinc-200">
+              {resource.usageQuantity} {resource.unitOfMeasure}
             </span>
           </div>
-        </CardContent>
-      </Card>
+        )}
+      </div>
     </motion.div>
   );
 }

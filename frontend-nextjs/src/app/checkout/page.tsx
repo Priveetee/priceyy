@@ -34,39 +34,28 @@ import { Label } from "@/components/ui/label";
 
 const PRESET_QUANTITIES = [1, 8, 24, 730];
 
-const isFixedPriceItem = (unit: string): boolean => {
-  const fixedUnits = ["1", "1/day", "1/month", "1/year"];
-  return fixedUnits.includes(unit.toLowerCase());
-};
+const isFixedUnit = (unit: string) => unit === "1";
 
 export default function CheckoutPage() {
-  const { items, removeFromCart, updateUsage, updateCount } = useCartStore();
+  const { items, removeFromCart, updateItem } = useCartStore();
   const isHydrated = useHydration();
   const [customQuantities, setCustomQuantities] = useState<
     Record<string, boolean>
   >({});
 
-  const handleQuantitySelect = (
-    itemId: string,
-    unit: string,
-    quantity: number,
-  ) => {
-    updateUsage(itemId, { [unit]: quantity });
-    setCustomQuantities((prev) => ({ ...prev, [`${itemId}-${unit}`]: false }));
+  const handleUsageQuantitySelect = (itemId: string, quantity: number) => {
+    updateItem(itemId, { usageQuantity: quantity });
+    setCustomQuantities((prev) => ({ ...prev, [itemId]: false }));
   };
 
-  const handleCustomQuantityChange = (
-    itemId: string,
-    unit: string,
-    value: string,
-  ) => {
+  const handleCustomUsageQuantityChange = (itemId: string, value: string) => {
     const numValue = parseInt(value.replace(/[^0-9]/g, ""), 10);
-    updateUsage(itemId, { [unit]: isNaN(numValue) ? 0 : numValue });
+    updateItem(itemId, { usageQuantity: isNaN(numValue) ? 0 : numValue });
   };
 
   const handleCountChange = (itemId: string, value: string) => {
     const numValue = parseInt(value.replace(/[^0-9]/g, ""), 10);
-    updateCount(itemId, isNaN(numValue) ? 1 : numValue);
+    updateItem(itemId, { count: isNaN(numValue) ? 1 : numValue });
   };
 
   return (
@@ -120,7 +109,7 @@ export default function CheckoutPage() {
           ) : (
             <div className="space-y-4">
               {items.map((item) => {
-                const isFixed = Object.keys(item.usage).some(isFixedPriceItem);
+                const isFixed = isFixedUnit(item.unitOfMeasure);
 
                 return (
                   <motion.div
@@ -136,7 +125,7 @@ export default function CheckoutPage() {
                           {item.resourceType}
                         </span>
                         <span className="text-sm text-zinc-500">
-                          {item.provider} - {item.region}
+                          {item.provider} - {item.region} - ({item.priceModel})
                         </span>
                       </div>
                       <Button
@@ -151,12 +140,11 @@ export default function CheckoutPage() {
 
                     <div className="flex items-center justify-end gap-3 pl-8">
                       <Label className="text-zinc-400 text-sm w-24 truncate text-right">
-                        Instances
+                        {isFixed ? "Quantity" : "Instances"}
                       </Label>
                       <Input
                         type="text"
                         pattern="[0-9]*"
-                        placeholder="Count"
                         value={item.count}
                         onChange={(e) =>
                           handleCountChange(item.id, e.target.value)
@@ -165,67 +153,61 @@ export default function CheckoutPage() {
                       />
                     </div>
 
-                    {!isFixed &&
-                      Object.entries(item.usage).map(([unit, quantity]) => (
-                        <div
-                          key={unit}
-                          className="flex items-center justify-end gap-3 pl-8"
-                        >
-                          <span className="text-zinc-400 text-sm w-24 truncate text-right">
-                            {unit}
-                          </span>
-                          {customQuantities[`${item.id}-${unit}`] ? (
-                            <Input
-                              type="text"
-                              pattern="[0-9]*"
-                              placeholder="Usage"
-                              value={quantity}
-                              onChange={(e) =>
-                                handleCustomQuantityChange(
-                                  item.id,
-                                  unit,
-                                  e.target.value,
-                                )
-                              }
-                              className="bg-zinc-950 border-zinc-700 text-zinc-200 w-24 h-9"
-                            />
-                          ) : (
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button
-                                  variant="outline"
-                                  className="justify-between bg-zinc-950 border-zinc-700 hover:bg-zinc-800 text-zinc-200 w-24 h-9"
-                                >
-                                  {quantity}
-                                  <ChevronDown className="h-4 w-4 text-zinc-500" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent className="bg-zinc-900 border-zinc-700 text-zinc-200">
-                                {PRESET_QUANTITIES.map((q) => (
-                                  <DropdownMenuItem
-                                    key={q}
-                                    onSelect={() =>
-                                      handleQuantitySelect(item.id, unit, q)
-                                    }
-                                  >
-                                    {q}
-                                  </DropdownMenuItem>
-                                ))}
+                    {!isFixed && (
+                      <div className="flex items-center justify-end gap-3 pl-8">
+                        <span className="text-zinc-400 text-sm w-24 truncate text-right">
+                          Usage ({item.unitOfMeasure})
+                        </span>
+                        {customQuantities[item.id] ? (
+                          <Input
+                            type="text"
+                            pattern="[0-9]*"
+                            value={item.usageQuantity}
+                            onChange={(e) =>
+                              handleCustomUsageQuantityChange(
+                                item.id,
+                                e.target.value,
+                              )
+                            }
+                            className="bg-zinc-950 border-zinc-700 text-zinc-200 w-24 h-9"
+                          />
+                        ) : (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="outline"
+                                className="justify-between bg-zinc-950 border-zinc-700 hover:bg-zinc-800 text-zinc-200 w-24 h-9"
+                              >
+                                {item.usageQuantity}
+                                <ChevronDown className="h-4 w-4 text-zinc-500" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent className="bg-zinc-900 border-zinc-700 text-zinc-200">
+                              {PRESET_QUANTITIES.map((q) => (
                                 <DropdownMenuItem
+                                  key={q}
                                   onSelect={() =>
-                                    setCustomQuantities((prev) => ({
-                                      ...prev,
-                                      [`${item.id}-${unit}`]: true,
-                                    }))
+                                    handleUsageQuantitySelect(item.id, q)
                                   }
                                 >
-                                  <Pencil className="mr-2 h-4 w-4" /> Custom
+                                  {q}
                                 </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          )}
-                        </div>
-                      ))}
+                              ))}
+                              <DropdownMenuItem
+                                onSelect={() =>
+                                  setCustomQuantities((prev) => ({
+                                    ...prev,
+                                    [item.id]: true,
+                                  }))
+                                }
+                              >
+                                <Pencil className="mr-2 h-4 w-4" /> Custom
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        )}
+                      </div>
+                    )}
                   </motion.div>
                 );
               })}

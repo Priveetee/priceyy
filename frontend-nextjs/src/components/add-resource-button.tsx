@@ -8,7 +8,6 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-  DialogDescription,
 } from "./ui/dialog";
 import { PlusCircle, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
@@ -20,6 +19,18 @@ import { ResourceStep } from "@/app/calculate/components/resource-step";
 import { UsageStep } from "@/app/calculate/components/usage-step";
 
 type Step = "provider" | "region" | "resource" | "usage";
+
+interface ResourceOption {
+  priceModel: string;
+  unitOfMeasure: string;
+  pricePerUnit: number;
+}
+
+interface UsageInfo {
+  selectedOption: ResourceOption | null;
+  usageQuantity: number;
+  count: number;
+}
 
 export default function AddResourceButton({
   onResourceSelect,
@@ -63,17 +74,20 @@ export default function AddResourceButton({
     setStep("usage");
   };
 
-  const onUsagesComplete = (
-    usages: Record<string, { unit: string; quantity: number; count: number }>,
-  ) => {
+  const onUsagesComplete = (usages: Record<string, UsageInfo>) => {
     selectedResources.forEach((resourceType) => {
       const usageInfo = usages[resourceType];
+      if (!usageInfo || !usageInfo.selectedOption) return;
+
       const cartItem: CartItem = {
         id: crypto.randomUUID(),
         provider: selectedProvider!,
         region: selectedRegion!,
         resourceType,
-        usage: { [usageInfo.unit]: usageInfo.quantity },
+        priceModel: usageInfo.selectedOption.priceModel,
+        unitOfMeasure: usageInfo.selectedOption.unitOfMeasure,
+        pricePerUnit: usageInfo.selectedOption.pricePerUnit,
+        usageQuantity: usageInfo.usageQuantity,
         count: usageInfo.count,
       };
       onResourceSelect(cartItem);
@@ -142,9 +156,10 @@ export default function AddResourceButton({
                 onSelect={onResourcesSelect}
               />
             )}
-            {step === "usage" && selectedProvider && (
+            {step === "usage" && selectedProvider && selectedRegion && (
               <UsageStep
                 provider={selectedProvider}
+                region={selectedRegion}
                 resources={selectedResources}
                 onComplete={onUsagesComplete}
               />

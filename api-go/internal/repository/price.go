@@ -14,19 +14,38 @@ func NewPriceRepository(client *ent.Client) *PriceRepository {
 	return &PriceRepository{client: client}
 }
 
-func (r *PriceRepository) FindPrices(ctx context.Context, provider, resourceType, region, priceModel string) ([]*ent.Price, error) {
-	return r.client.Price.Query().
+func (r *PriceRepository) FindPrices(ctx context.Context, provider, resourceType, region, priceModel, unitOfMeasure string) ([]*ent.Price, error) {
+	p, err := r.client.Price.Query().
 		Where(
 			price.Provider(provider),
 			price.ResourceType(resourceType),
 			price.Region(region),
 			price.PriceModel(priceModel),
+			price.UnitOfMeasure(unitOfMeasure),
+		).
+		First(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return []*ent.Price{}, nil
+		}
+		return nil, err
+	}
+	return []*ent.Price{p}, nil
+}
+
+func (r *PriceRepository) FindResourceOptions(ctx context.Context, provider, resourceType, region string) ([]*ent.Price, error) {
+	return r.client.Price.Query().
+		Where(
+			price.Provider(provider),
+			price.ResourceType(resourceType),
+			price.Region(region),
 		).
 		All(ctx)
 }
 
 func (r *PriceRepository) ListDistinctProviders(ctx context.Context) ([]string, error) {
 	return r.client.Price.Query().
+		Order(ent.Asc(price.FieldProvider)).
 		GroupBy(price.FieldProvider).
 		Strings(ctx)
 }
@@ -34,6 +53,7 @@ func (r *PriceRepository) ListDistinctProviders(ctx context.Context) ([]string, 
 func (r *PriceRepository) ListDistinctRegions(ctx context.Context, provider string) ([]string, error) {
 	return r.client.Price.Query().
 		Where(price.Provider(provider)).
+		Order(ent.Asc(price.FieldRegion)).
 		GroupBy(price.FieldRegion).
 		Strings(ctx)
 }
@@ -50,6 +70,7 @@ func (r *PriceRepository) ListDistinctResourceTypes(ctx context.Context, provide
 	}
 
 	return q.Order(ent.Asc(price.FieldResourceType)).
+		Limit(100).
 		GroupBy(price.FieldResourceType).
 		Strings(ctx)
 }
