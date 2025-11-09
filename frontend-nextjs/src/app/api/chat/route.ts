@@ -1,25 +1,22 @@
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { streamText, UIMessage } from "ai";
 
-const apiKey = process.env.OPENROUTER_API_KEY;
-if (!apiKey) {
-  throw new Error("OPENROUTER_API_KEY is not set.");
-}
-
-const openrouter = createOpenRouter({ apiKey });
-
 export const maxDuration = 30;
 
-function convertUIMessagesToModelMessages(messages: UIMessage[]) {
+function convertUIMessagesToModelMessages(
+  messages: UIMessage[],
+): { role: "user" | "assistant"; content: string }[] {
   return messages
-    .filter((msg) => msg.role === "user" || msg.role === "assistant")
+    .filter(
+      (msg): msg is UIMessage & { role: "user" | "assistant" } =>
+        msg.role === "user" || msg.role === "assistant",
+    )
     .map((msg) => {
-      const content = Array.isArray(msg.parts)
-        ? msg.parts
-            .filter((p: any) => p.type === "text")
-            .map((p: any) => p.text)
-            .join("")
-        : "";
+      const content =
+        msg.parts
+          ?.filter((part) => part.type === "text")
+          .map((part) => (part as { type: "text"; text: string }).text)
+          .join("\n") || "";
 
       return { role: msg.role, content };
     })
@@ -27,6 +24,15 @@ function convertUIMessagesToModelMessages(messages: UIMessage[]) {
 }
 
 export async function POST(req: Request) {
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  if (!apiKey) {
+    return new Response("OPENROUTER_API_KEY is not set.", {
+      status: 500,
+    });
+  }
+
+  const openrouter = createOpenRouter({ apiKey });
+
   const { messages }: { messages: UIMessage[] } = await req.json();
 
   const systemMessage = `You are a helpful and concise cloud cost advisor for the 'Priceyy' application. Your only role is to provide information and guidance to the user.
