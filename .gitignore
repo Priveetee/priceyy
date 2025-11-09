@@ -4,116 +4,52 @@
 .venv
 venv/
 env/
-/frontend-nextjs/.next/
-/frontend-nextjs/node_modules/
-/frontend-nextjs/.env.local
-
-# Python
-__pycache__/
-**/cache/
-*.pyc
-*.pyo
-*.pyd
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-pip-wheel-metadata/
-share/python-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
-instance/
-.pytest_cache/
-.mypy_cache/
-.hypothesis/
-.tox/
-htmlcov/
-*.so
-backend/.coverage
-
-# Node
-node_modules/
-dist/
-.DS_Store
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.npm
-.eslintcache
-.vite
-
-# Frontend
-frontend/node_modules/
-frontend/dist/
-frontend/dist-ssr/
-frontend/logs/
-frontend/*.log
-frontend/pnpm-debug.log*
-frontend/lerna-debug.log*
-frontend/*.local
-frontend/.vscode/*
-!frontend/.vscode/extensions.json
-frontend/.idea/
-frontend/*.suo
-frontend/*.ntvs*
-frontend/*.njsproj
-frontend/*.sln
-frontend/*.sw?
 
 # Docker
 docker-compose.override.yml
 
-# Logs
-backend/logs/audit.log
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
-# dependencies
-/node_modules
-/.pnp
-.pnp.*
-.yarn/*
-!.yarn/patches
-!.yarn/plugins
-!.yarn/releases
-!.yarn/versions
-
-# testing
-/coverage
-
-# next.js
-/.next/
-/out/
-
-# production
-/build
-
-# misc
+# IDE & OS files
 .DS_Store
-*.pem
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
 
-# debug
+# Log files
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env
+# Cache directories
+.eslintcache
+.vite
+.pytest_cache/
+.mypy_cache/
+.hypothesis/
+.tox/
+htmlcov/
+**/__pycache__/
+**/cache/
 
-# vercel
-.vercel
+# Python build artifacts
+*.pyc
+*.pyo
+*.pyd
+build/
+dist/
+*.egg-info/
+*.egg
 
-# typescript
-*.tsbuildinfo
-next-env.d.ts
+# Node build artifacts
+/frontend-nextjs/.next/
+/frontend-nextjs/out/
+/frontend-nextjs/build/
+/frontend-nextjs/node_modules/
+
+# Test reports
+/coverage
