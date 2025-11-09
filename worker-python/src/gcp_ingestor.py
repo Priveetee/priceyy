@@ -65,7 +65,6 @@ def _fetch_and_cache_gcp_data(api_key, cache_file_path):
                 for sku in client.list_skus(request=skus_request):
                     all_skus.append(_sku_to_dict(sku, service.display_name))
                 pbar.update(1)
-                time.sleep(0.2)
 
         print(f"Download complete. Saving {len(all_skus)} SKUs to cache...")
         with open(cache_file_path, "w") as f:
@@ -98,7 +97,6 @@ def _sku_to_dict(sku, service_display_name):
             )
 
     return {
-        "name": sku.name,
         "description": sku.description,
         "service_display_name": service_display_name,
         "regions": list(sku.geo_taxonomy.regions),

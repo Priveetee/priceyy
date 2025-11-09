@@ -35,6 +35,7 @@ export default function CalculatePage() {
   const isHydrated = useHydration();
 
   const handleAddResource = (resource: CartItem) => {
+    console.log("[calculate-page] Received resource to add:", resource);
     addToCart(resource);
   };
 
@@ -51,7 +52,6 @@ export default function CalculatePage() {
       <div className="absolute inset-0 z-[-1]">
         <Silk color="#360707" noiseIntensity={0.4} scale={1.2} speed={1.5} />
       </div>
-
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <motion.div
           initial={{ opacity: 0, y: 20 }}

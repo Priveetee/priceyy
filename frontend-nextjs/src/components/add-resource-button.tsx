@@ -14,7 +14,6 @@ import { PlusCircle, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import { CartItem } from "@/lib/cartStore";
 import { AnimatePresence } from "framer-motion";
-
 import { ProviderStep } from "@/app/calculate/components/provider-step";
 import { RegionStep } from "@/app/calculate/components/region-step";
 import { ResourceStep } from "@/app/calculate/components/resource-step";
@@ -29,7 +28,6 @@ export default function AddResourceButton({
 }) {
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<Step>("provider");
-
   const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
   const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
   const [selectedResources, setSelectedResources] = useState<string[]>([]);
@@ -66,16 +64,19 @@ export default function AddResourceButton({
   };
 
   const onUsagesComplete = (
-    usages: Record<string, { unit: string; quantity: number }>,
+    usages: Record<string, { unit: string; quantity: number; count: number }>,
   ) => {
     selectedResources.forEach((resourceType) => {
-      onResourceSelect({
+      const usageInfo = usages[resourceType];
+      const cartItem: CartItem = {
         id: crypto.randomUUID(),
         provider: selectedProvider!,
         region: selectedRegion!,
         resourceType,
-        usage: { [usages[resourceType].unit]: usages[resourceType].quantity },
-      });
+        usage: { [usageInfo.unit]: usageInfo.quantity },
+        count: usageInfo.count,
+      };
+      onResourceSelect(cartItem);
     });
     toast.success(`${selectedResources.length} resource(s) added to estimate.`);
     reset();
@@ -121,9 +122,6 @@ export default function AddResourceButton({
               </Button>
             )}
             <DialogTitle>{getTitle()}</DialogTitle>
-            <DialogDescription className="sr-only">
-              Follow the steps to add cloud resources to your estimate.
-            </DialogDescription>
           </div>
         </DialogHeader>
         <div className="p-0">
@@ -131,21 +129,22 @@ export default function AddResourceButton({
             {step === "provider" && (
               <ProviderStep onSelect={onProviderSelect} />
             )}
-            {step === "region" && (
+            {step === "region" && selectedProvider && (
               <RegionStep
-                provider={selectedProvider!}
+                provider={selectedProvider}
                 onSelect={onRegionSelect}
               />
             )}
-            {step === "resource" && (
+            {step === "resource" && selectedProvider && selectedRegion && (
               <ResourceStep
-                provider={selectedProvider!}
-                region={selectedRegion!}
+                provider={selectedProvider}
+                region={selectedRegion}
                 onSelect={onResourcesSelect}
               />
             )}
-            {step === "usage" && (
+            {step === "usage" && selectedProvider && (
               <UsageStep
+                provider={selectedProvider}
                 resources={selectedResources}
                 onComplete={onUsagesComplete}
               />

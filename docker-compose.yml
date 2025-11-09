@@ -67,6 +67,8 @@ services:
       - priceyy_network
     depends_on:
       - api
+    environment:
+      - INTERNAL_API_URL=http://api:8080
 
 volumes:
   postgres_data:

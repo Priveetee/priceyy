@@ -1,5 +1,4 @@
 "use client";
-
 import { useEffect } from "react";
 import Silk from "@/components/silk";
 import { useCartStore } from "@/lib/cartStore";
@@ -24,15 +23,14 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useHydration } from "@/lib/use-hydration";
-
 export default function ResultsPage() {
   const { items } = useCartStore();
   const isHydrated = useHydration();
   const calculateMutation = trpc.calculate.useMutation();
-
   useEffect(() => {
     if (isHydrated && items.length > 0 && calculateMutation.isIdle) {
       const servicesToCalculate = items.map(({ id, ...rest }) => rest);
+      console.log("[results-page] Calling mutate with:", servicesToCalculate);
       calculateMutation.mutate(servicesToCalculate);
     }
   }, [isHydrated, items, calculateMutation]);

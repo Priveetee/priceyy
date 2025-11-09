@@ -30,15 +30,21 @@ import {
 import { PackageOpen } from "lucide-react";
 import { Spinner } from "@/components/ui/spinner";
 import { useHydration } from "@/lib/use-hydration";
+import { Label } from "@/components/ui/label";
 
 const PRESET_QUANTITIES = [1, 8, 24, 730];
 
+const isFixedPriceItem = (unit: string): boolean => {
+  const fixedUnits = ["1", "1/day", "1/month", "1/year"];
+  return fixedUnits.includes(unit.toLowerCase());
+};
+
 export default function CheckoutPage() {
-  const { items, removeFromCart, updateUsage } = useCartStore();
+  const { items, removeFromCart, updateUsage, updateCount } = useCartStore();
   const isHydrated = useHydration();
-  const [customQuantity, setCustomQuantity] = useState<Record<string, boolean>>(
-    {},
-  );
+  const [customQuantities, setCustomQuantities] = useState<
+    Record<string, boolean>
+  >({});
 
   const handleQuantitySelect = (
     itemId: string,
@@ -46,7 +52,7 @@ export default function CheckoutPage() {
     quantity: number,
   ) => {
     updateUsage(itemId, { [unit]: quantity });
-    setCustomQuantity((prev) => ({ ...prev, [itemId]: false }));
+    setCustomQuantities((prev) => ({ ...prev, [`${itemId}-${unit}`]: false }));
   };
 
   const handleCustomQuantityChange = (
@@ -56,6 +62,11 @@ export default function CheckoutPage() {
   ) => {
     const numValue = parseInt(value.replace(/[^0-9]/g, ""), 10);
     updateUsage(itemId, { [unit]: isNaN(numValue) ? 0 : numValue });
+  };
+
+  const handleCountChange = (itemId: string, value: string) => {
+    const numValue = parseInt(value.replace(/[^0-9]/g, ""), 10);
+    updateCount(itemId, isNaN(numValue) ? 1 : numValue);
   };
 
   return (
@@ -109,8 +120,7 @@ export default function CheckoutPage() {
           ) : (
             <div className="space-y-4">
               {items.map((item) => {
-                const unit = Object.keys(item.usage)[0] || "N/A";
-                const quantity = item.usage[unit] || 0;
+                const isFixed = Object.keys(item.usage).some(isFixedPriceItem);
 
                 return (
                   <motion.div
@@ -118,70 +128,17 @@ export default function CheckoutPage() {
                     layout
                     initial={{ scale: 0.95, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
-                    className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-4 flex items-center justify-between shadow-lg"
+                    className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-4 flex flex-col gap-3 shadow-lg"
                   >
-                    <div className="flex flex-col gap-1">
-                      <span className="text-lg text-zinc-200 font-medium">
-                        {item.resourceType}
-                      </span>
-                      <span className="text-sm text-zinc-500">
-                        {item.provider} - {item.region}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      {customQuantity[item.id] ? (
-                        <Input
-                          type="text"
-                          pattern="[0-9]*"
-                          placeholder="Quantity"
-                          value={quantity}
-                          onChange={(e) =>
-                            handleCustomQuantityChange(
-                              item.id,
-                              unit,
-                              e.target.value,
-                            )
-                          }
-                          className="bg-zinc-950 border-zinc-700 text-zinc-200 w-24 h-9"
-                        />
-                      ) : (
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="outline"
-                              className="justify-between bg-zinc-950 border-zinc-700 hover:bg-zinc-800 text-zinc-200 w-24 h-9"
-                            >
-                              {quantity}
-                              <ChevronDown className="h-4 w-4 text-zinc-500" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent className="bg-zinc-900 border-zinc-700 text-zinc-200">
-                            {PRESET_QUANTITIES.map((q) => (
-                              <DropdownMenuItem
-                                key={q}
-                                onSelect={() =>
-                                  handleQuantitySelect(item.id, unit, q)
-                                }
-                              >
-                                {q}
-                              </DropdownMenuItem>
-                            ))}
-                            <DropdownMenuItem
-                              onSelect={() =>
-                                setCustomQuantity((prev) => ({
-                                  ...prev,
-                                  [item.id]: true,
-                                }))
-                              }
-                            >
-                              <Pencil className="mr-2 h-4 w-4" /> Custom
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      )}
-                      <span className="text-zinc-400 text-sm w-16 truncate">
-                        {unit}
-                      </span>
+                    <div className="flex justify-between items-start">
+                      <div className="flex flex-col gap-1">
+                        <span className="text-lg text-zinc-200 font-medium">
+                          {item.resourceType}
+                        </span>
+                        <span className="text-sm text-zinc-500">
+                          {item.provider} - {item.region}
+                        </span>
+                      </div>
                       <Button
                         variant="ghost"
                         size="icon"
@@ -191,6 +148,84 @@ export default function CheckoutPage() {
                         <Trash2 className="h-5 w-5" />
                       </Button>
                     </div>
+
+                    <div className="flex items-center justify-end gap-3 pl-8">
+                      <Label className="text-zinc-400 text-sm w-24 truncate text-right">
+                        Instances
+                      </Label>
+                      <Input
+                        type="text"
+                        pattern="[0-9]*"
+                        placeholder="Count"
+                        value={item.count}
+                        onChange={(e) =>
+                          handleCountChange(item.id, e.target.value)
+                        }
+                        className="bg-zinc-950 border-zinc-700 text-zinc-200 w-24 h-9"
+                      />
+                    </div>
+
+                    {!isFixed &&
+                      Object.entries(item.usage).map(([unit, quantity]) => (
+                        <div
+                          key={unit}
+                          className="flex items-center justify-end gap-3 pl-8"
+                        >
+                          <span className="text-zinc-400 text-sm w-24 truncate text-right">
+                            {unit}
+                          </span>
+                          {customQuantities[`${item.id}-${unit}`] ? (
+                            <Input
+                              type="text"
+                              pattern="[0-9]*"
+                              placeholder="Usage"
+                              value={quantity}
+                              onChange={(e) =>
+                                handleCustomQuantityChange(
+                                  item.id,
+                                  unit,
+                                  e.target.value,
+                                )
+                              }
+                              className="bg-zinc-950 border-zinc-700 text-zinc-200 w-24 h-9"
+                            />
+                          ) : (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  className="justify-between bg-zinc-950 border-zinc-700 hover:bg-zinc-800 text-zinc-200 w-24 h-9"
+                                >
+                                  {quantity}
+                                  <ChevronDown className="h-4 w-4 text-zinc-500" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent className="bg-zinc-900 border-zinc-700 text-zinc-200">
+                                {PRESET_QUANTITIES.map((q) => (
+                                  <DropdownMenuItem
+                                    key={q}
+                                    onSelect={() =>
+                                      handleQuantitySelect(item.id, unit, q)
+                                    }
+                                  >
+                                    {q}
+                                  </DropdownMenuItem>
+                                ))}
+                                <DropdownMenuItem
+                                  onSelect={() =>
+                                    setCustomQuantities((prev) => ({
+                                      ...prev,
+                                      [`${item.id}-${unit}`]: true,
+                                    }))
+                                  }
+                                >
+                                  <Pencil className="mr-2 h-4 w-4" /> Custom
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          )}
+                        </div>
+                      ))}
                   </motion.div>
                 );
               })}

@@ -2,8 +2,8 @@ package service
 
 import (
 	"context"
-	"fmt"
 	"priceyy/api/ent"
+	"strings"
 )
 
 type PriceRepository interface {
@@ -52,32 +52,31 @@ func (s *PriceService) Calculate(ctx context.Context, items []CalculationItem) (
 
 	for _, item := range items {
 		priceRecords, err := s.repo.FindPrices(ctx, item.Provider, item.ResourceType, item.Region, "on-demand")
-		if err != nil || len(priceRecords) == 0 {
-			return nil, fmt.Errorf("prices not found for %s in %s", item.ResourceType, item.Region)
+		if err != nil {
+			return nil, err
 		}
 
-		priceMap := make(map[string]float64)
-		for _, p := range priceRecords {
-			priceMap[p.UnitOfMeasure] = p.PricePerUnit
-		}
-
-		var serviceTotalCost float64
+		serviceTotalCost := 0.0
 		var usageBreakdown []UsageCost
 
-		for unit, quantity := range item.Usage {
-			pricePerUnit, ok := priceMap[unit]
-			if !ok {
-				continue
+		if len(priceRecords) > 0 {
+			priceMap := make(map[string]float64)
+			for _, p := range priceRecords {
+				priceMap[strings.ToLower(p.UnitOfMeasure)] = p.PricePerUnit
 			}
 
-			cost := quantity * pricePerUnit
-
-			serviceTotalCost += cost
-			usageBreakdown = append(usageBreakdown, UsageCost{
-				Unit:     unit,
-				Quantity: quantity,
-				Cost:     cost,
-			})
+			for unit, quantity := range item.Usage {
+				pricePerUnit, ok := priceMap[strings.ToLower(unit)]
+				if ok {
+					cost := quantity * pricePerUnit
+					serviceTotalCost += cost
+					usageBreakdown = append(usageBreakdown, UsageCost{
+						Unit:     unit,
+						Quantity: quantity,
+						Cost:     cost,
+					})
+				}
+			}
 		}
 
 		totalCost += serviceTotalCost

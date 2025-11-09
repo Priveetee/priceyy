@@ -1,7 +1,32 @@
 import { z } from "zod";
 import { router, publicProcedure } from "../trpc";
 
-const API_BASE_URL = "http://localhost:8083";
+const API_BASE_URL = process.env.INTERNAL_API_URL || "http://localhost:8083";
+
+const isFixedPriceResource = (provider: string, resource: string): boolean => {
+  if (provider === "azure") {
+    return ["Shipping", "Fee", "Training", "Support", "Setup"].some((term) =>
+      resource.includes(term),
+    );
+  }
+  return false;
+};
+
+const getApiUnit = (
+  provider: string,
+  resource: string,
+  frontendUnit: string,
+): string => {
+  if (isFixedPriceResource(provider, resource)) {
+    return "1";
+  }
+  const MAPPING: Record<string, Record<string, string>> = {
+    gcp: { Hrs: "h" },
+    azure: { Hrs: "1 Hour" },
+    aws: { Hrs: "hours" },
+  };
+  return MAPPING[provider]?.[frontendUnit] || frontendUnit.toLowerCase();
+};
 
 export const appRouter = router({
   getProviders: publicProcedure.query(async () => {
@@ -45,20 +70,54 @@ export const appRouter = router({
           region: z.string(),
           resourceType: z.string(),
           usage: z.record(z.string(), z.number()),
+          count: z.number(),
         }),
       ),
     )
     .mutation(async ({ input }) => {
+      console.log("[trpc-router] 'calculate' received input:", input);
+
+      const servicesForApi = input.map((item) => {
+        const [frontendUnit, quantity] = Object.entries(item.usage)[0];
+        const apiUnit = getApiUnit(
+          item.provider,
+          item.resourceType,
+          frontendUnit,
+        );
+
+        const totalQuantity = isFixedPriceResource(
+          item.provider,
+          item.resourceType,
+        )
+          ? item.count
+          : quantity * item.count;
+
+        return {
+          provider: item.provider,
+          region: item.region,
+          resourceType: item.resourceType,
+          usage: { [apiUnit]: totalQuantity },
+        };
+      });
+
+      const body = { services: servicesForApi };
+      console.log("[trpc-router] Sending this body to Go API:", body);
+
       const res = await fetch(`${API_BASE_URL}/calculate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ services: input }),
+        body: JSON.stringify(body),
       });
+
       if (!res.ok) {
-        const errorBody = await res.json();
-        throw new Error(errorBody.error || "Calculation failed");
+        const errorBody = await res.text();
+        console.error("[trpc-router] Go API returned an error:", errorBody);
+        throw new Error("Calculation failed");
       }
-      return res.json();
+
+      const data = await res.json();
+      console.log("[trpc-router] Go API returned success:", data);
+      return data;
     }),
 });
 
