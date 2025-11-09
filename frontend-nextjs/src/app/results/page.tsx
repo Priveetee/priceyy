@@ -1,134 +1,93 @@
 "use client";
+
 import { useEffect } from "react";
 import Silk from "@/components/silk";
 import { useCartStore } from "@/lib/cartStore";
+import { trpc } from "@/lib/trpc/client";
 import { motion } from "framer-motion";
-import { ArrowLeft, Loader2, AlertTriangle, ServerCrash } from "lucide-react";
+import { ArrowLeft, RefreshCw, ServerCrash } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { trpc } from "@/lib/trpc/client";
-import {
-  Empty,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-} from "@/components/ui/empty";
 import { Spinner } from "@/components/ui/spinner";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { useHydration } from "@/lib/use-hydration";
+  ProviderIconMap,
+  getRegionIcon,
+} from "@/components/icons/provider-icons";
+
+interface BreakdownItem {
+  resourceType: string;
+  region: string;
+  totalCost: number;
+}
+
+interface CalculationResult {
+  totalCost: number;
+  breakdown: BreakdownItem[];
+}
+
 export default function ResultsPage() {
-  const { items } = useCartStore();
-  const isHydrated = useHydration();
-  const calculateMutation = trpc.calculate.useMutation();
+  const { items: cartItems } = useCartStore();
+
+  const {
+    data: result,
+    isPending,
+    isError,
+    mutate,
+    reset,
+  } = trpc.calculate.useMutation();
+
   useEffect(() => {
-    if (isHydrated && items.length > 0 && calculateMutation.isIdle) {
-      const servicesToCalculate = items.map(({ id, ...rest }) => rest);
-      console.log("[results-page] Calling mutate with:", servicesToCalculate);
-      calculateMutation.mutate(servicesToCalculate);
+    const itemsToCalculate = cartItems.map((item) => ({
+      provider: item.provider,
+      region: item.region,
+      resourceType: item.resourceType,
+      priceModel: item.priceModel,
+      unitOfMeasure: item.unitOfMeasure,
+      usageQuantity: item.usageQuantity,
+      count: item.count,
+    }));
+    if (itemsToCalculate.length > 0) {
+      mutate(itemsToCalculate);
     }
-  }, [isHydrated, items, calculateMutation]);
+  }, [cartItems, mutate]);
 
-  const ResultContent = () => {
-    if (!isHydrated) {
-      return (
-        <div className="flex justify-center items-center h-64">
-          <Spinner className="h-12 w-12" />
-        </div>
-      );
-    }
+  const handleRetry = () => {
+    reset();
+    const itemsToCalculate = cartItems.map((item) => ({
+      provider: item.provider,
+      region: item.region,
+      resourceType: item.resourceType,
+      priceModel: item.priceModel,
+      unitOfMeasure: item.unitOfMeasure,
+      usageQuantity: item.usageQuantity,
+      count: item.count,
+    }));
+    mutate(itemsToCalculate);
+  };
 
-    if (items.length === 0) {
-      return (
-        <Empty className="bg-transparent">
-          <EmptyHeader>
-            <EmptyMedia>
-              <ServerCrash className="h-16 w-16 text-zinc-500" />
-            </EmptyMedia>
-            <EmptyTitle className="text-zinc-300">
-              No Items to Calculate
-            </EmptyTitle>
-            <EmptyDescription className="text-zinc-500">
-              Your estimate is empty. Add some resources to see the results.
-            </EmptyDescription>
-          </EmptyHeader>
-        </Empty>
-      );
-    }
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(amount);
+  };
 
-    if (calculateMutation.isPending) {
-      return (
-        <div className="flex justify-center items-center h-64">
-          <Spinner className="h-12 w-12" />
-        </div>
-      );
-    }
-
-    if (calculateMutation.isError) {
-      return (
-        <Empty className="bg-transparent">
-          <EmptyHeader>
-            <EmptyMedia>
-              <AlertTriangle className="h-16 w-16 text-red-500" />
-            </EmptyMedia>
-            <EmptyTitle className="text-red-400">Calculation Failed</EmptyTitle>
-            <EmptyDescription className="text-zinc-400">
-              {calculateMutation.error.message}
-            </EmptyDescription>
-          </EmptyHeader>
-        </Empty>
-      );
-    }
-
-    if (calculateMutation.isSuccess) {
-      return (
-        <Card className="bg-zinc-900/50 border-zinc-800 text-white">
-          <CardHeader>
-            <CardTitle>Cost Breakdown</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {calculateMutation.data.breakdown.map(
-              (item: any, index: number) => (
-                <div
-                  key={index}
-                  className="flex justify-between items-center p-3 bg-zinc-800/50 rounded-md"
-                >
-                  <div>
-                    <p className="font-medium">{item.resourceType}</p>
-                    <p className="text-xs text-zinc-400">{item.region}</p>
-                  </div>
-                  <p className="font-semibold">${item.totalCost.toFixed(2)}</p>
-                </div>
-              ),
-            )}
-          </CardContent>
-          <CardFooter className="flex justify-between items-center bg-zinc-800/50 p-4 mt-4 rounded-b-lg">
-            <p className="text-lg font-bold">Estimated Total</p>
-            <p className="text-2xl font-bold text-green-400">
-              ${calculateMutation.data.totalCost.toFixed(2)}
-            </p>
-          </CardFooter>
-        </Card>
-      );
-    }
-
-    return null;
+  const getProviderForItem = (resourceType: string, region: string) => {
+    const item = cartItems.find(
+      (i) => i.resourceType === resourceType && i.region === region,
+    );
+    return item ? item.provider : "unknown";
   };
 
   return (
     <div className="relative min-h-screen w-full">
       <div className="absolute inset-0 z-[-1]">
-        <Silk color="#6EE7CF" noiseIntensity={0.3} scale={1.2} speed={1.5} />
+        <Silk color="#073622" noiseIntensity={0.3} scale={1.5} speed={1} />
       </div>
-      <div className="absolute inset-0 z-0 bg-black/70" />
-
-      <div className="relative z-10 container mx-auto px-4 sm:px-6 lg:px-8 pt-20">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 pt-20">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -136,23 +95,95 @@ export default function ResultsPage() {
           className="max-w-3xl mx-auto"
         >
           <div className="mb-8">
-            <Button
-              variant="ghost"
-              className="text-zinc-200 hover:text-white mb-4"
-              asChild
-            >
-              <Link href="/checkout">
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Back to review
-              </Link>
-            </Button>
+            <Link href="/checkout" passHref>
+              <Button
+                variant="ghost"
+                className="text-zinc-400 hover:text-white hover:bg-zinc-800 mb-4"
+              >
+                <ArrowLeft className="mr-2 h-4 w-4" /> Back to review
+              </Button>
+            </Link>
             <h1 className="text-3xl font-bold text-white">Estimate Results</h1>
-            <p className="text-zinc-200 mt-1">
+            <p className="text-zinc-400 mt-1">
               Here is the estimated cost based on your selection.
             </p>
           </div>
 
-          <ResultContent />
+          {isPending ? (
+            <div className="flex flex-col items-center justify-center gap-4 p-8 bg-zinc-900/50 border border-zinc-800 rounded-lg">
+              <Spinner className="h-10 w-10 text-green-400" />
+              <p className="text-zinc-400">Calculating your estimate...</p>
+            </div>
+          ) : isError ? (
+            <div className="flex flex-col items-center justify-center gap-4 p-8 bg-red-900/30 border border-red-800 rounded-lg text-center">
+              <ServerCrash className="h-10 w-10 text-red-400" />
+              <p className="text-red-300 font-semibold">Calculation Failed</p>
+              <p className="text-red-400/80 text-sm">
+                There was an error while trying to calculate the cost.
+              </p>
+              <Button
+                onClick={handleRetry}
+                className="mt-4 bg-red-500 hover:bg-red-600 text-white"
+              >
+                <RefreshCw className="mr-2 h-4 w-4" /> Try Again
+              </Button>
+            </div>
+          ) : (
+            result && (
+              <div className="space-y-6">
+                <div className="bg-gradient-to-br from-green-900/70 to-green-800/50 border border-green-700 rounded-lg p-6 text-center">
+                  <p className="text-lg text-green-300">Total Estimated Cost</p>
+                  <p className="text-4xl font-bold text-white mt-2">
+                    {formatCurrency(result.totalCost)}
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <h2 className="text-xl font-semibold text-white">
+                    Cost Breakdown
+                  </h2>
+                  <ScrollArea className="h-[400px] rounded-lg border border-zinc-800 bg-zinc-950/20 p-2">
+                    <div className="space-y-2">
+                      {result.breakdown.map(
+                        (item: BreakdownItem, index: number) => (
+                          <div
+                            key={index}
+                            className="flex items-center justify-between p-3 bg-zinc-900/50 hover:bg-zinc-800/50 rounded-md"
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="flex-shrink-0 w-5 flex items-center justify-center">
+                                {
+                                  ProviderIconMap[
+                                    getProviderForItem(
+                                      item.resourceType,
+                                      item.region,
+                                    ).toLowerCase()
+                                  ]
+                                }
+                              </div>
+                              <div className="flex flex-col">
+                                <span className="text-zinc-200">
+                                  {item.resourceType}
+                                </span>
+                                <div className="flex items-center gap-1.5 text-xs text-zinc-500">
+                                  <div className="flex-shrink-0 w-4 flex items-center justify-center">
+                                    {getRegionIcon(item.region)}
+                                  </div>
+                                  <span>{item.region}</span>
+                                </div>
+                              </div>
+                            </div>
+                            <span className="font-semibold text-white">
+                              {formatCurrency(item.totalCost)}
+                            </span>
+                          </div>
+                        ),
+                      )}
+                    </div>
+                  </ScrollArea>
+                </div>
+              </div>
+            )
+          )}
         </motion.div>
       </div>
     </div>

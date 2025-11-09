@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useMemo } from "react";
 import Silk from "@/components/silk";
 import AddResourceButton from "@/components/add-resource-button";
 import ResourceCard from "@/components/resource-card";
@@ -29,13 +30,14 @@ import {
 } from "@/components/ui/empty";
 import { Spinner } from "@/components/ui/spinner";
 import { useHydration } from "@/lib/use-hydration";
+import { ResourceSearchInput } from "@/components/resource-search-input";
 
 export default function CalculatePage() {
   const { items: cartItems, addToCart, clearCart } = useCartStore();
   const isHydrated = useHydration();
+  const [searchQuery, setSearchQuery] = useState("");
 
   const handleAddResource = (resource: CartItem) => {
-    console.log("[calculate-page] Received resource to add:", resource);
     addToCart(resource);
   };
 
@@ -43,6 +45,13 @@ export default function CalculatePage() {
     clearCart();
     toast.info("Your estimate has been cleared.");
   };
+
+  const filteredItems = useMemo(() => {
+    if (!searchQuery) return cartItems;
+    return cartItems.filter((item) =>
+      item.resourceType.toLowerCase().includes(searchQuery.toLowerCase()),
+    );
+  }, [cartItems, searchQuery]);
 
   const totalCartItems = cartItems.length;
   const displayCount = totalCartItems > 99 ? "99+" : totalCartItems;
@@ -66,6 +75,10 @@ export default function CalculatePage() {
               </p>
             </div>
             <div className="flex items-center gap-4">
+              <ResourceSearchInput
+                value={searchQuery}
+                onChange={setSearchQuery}
+              />
               <AddResourceButton onResourceSelect={handleAddResource} />
               <Link href="/checkout" passHref>
                 <Button
@@ -127,7 +140,7 @@ export default function CalculatePage() {
           ) : cartItems.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               <AnimatePresence>
-                {cartItems.map((item) => (
+                {filteredItems.map((item) => (
                   <ResourceCard key={item.id} resource={item} />
                 ))}
               </AnimatePresence>
