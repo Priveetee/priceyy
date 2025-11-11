@@ -99,7 +99,7 @@
         "transform": "lodash/{{member}}"
       }
     },
-    "outputFileTracingRoot": "/home/ark/Project/priceyy/frontend-nextjs",
+    "outputFileTracingRoot": "/home/xut/Documents/priceyy/frontend-nextjs",
     "experimental": {
       "useSkewCookie": false,
       "cacheLife": {
@@ -158,7 +158,7 @@
       "middlewarePrefetch": "flexible",
       "optimisticClientCache": true,
       "manualClientBasePath": false,
-      "cpus": 15,
+      "cpus": 23,
       "memoryBasedWorkersCount": false,
       "imgOptConcurrency": null,
       "imgOptTimeoutInSeconds": 7,
@@ -290,10 +290,10 @@
     "bundlePagesRouterDependencies": false,
     "configFileName": "next.config.ts",
     "turbopack": {
-      "root": "/home/ark/Project/priceyy/frontend-nextjs"
+      "root": "/home/xut/Documents/priceyy/frontend-nextjs"
     }
   },
-  "appDir": "/home/ark/Project/priceyy/frontend-nextjs",
+  "appDir": "/home/xut/Documents/priceyy/frontend-nextjs",
   "relativeAppDir": "",
   "files": [
     ".next/routes-manifest.json",
