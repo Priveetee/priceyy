@@ -2,11 +2,21 @@
 
 import Silk from "@/components/silk";
 import { ChatInput } from "./components/chat-input";
+import { ChatHeader } from "./components/chat-header";
+import { useState } from "react";
 
 export default function ChatPage() {
-    const handleSubmit = (message: string, model: string) => {
+    const [input, setInput] = useState("");
+    const [hasStartedChat, setHasStartedChat] = useState(false);
+
+    const handlePromptClick = (prompt: string) => {
+        setInput(prompt);
+    };
+
+    const handleSubmit = (message: string, provider: string) => {
         console.log("Message:", message);
-        console.log("Model:", model);
+        console.log("Provider:", provider);
+        setHasStartedChat(true);
     };
 
     return (
@@ -21,16 +31,17 @@ export default function ChatPage() {
             </div>
 
             <div className="flex-1 overflow-y-auto">
-                <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                    <h1 className="text-4xl font-bold text-white">
-                        AI Assistant
-                    </h1>
-                    <p className="text-zinc-400 mt-2">Ask me anything</p>
-                </div>
+                {!hasStartedChat && (
+                    <ChatHeader onPromptClick={handlePromptClick} />
+                )}
             </div>
 
             <div className="p-6">
-                <ChatInput onSubmit={handleSubmit} />
+                <ChatInput
+                    value={input}
+                    onValueChange={setInput}
+                    onSubmit={handleSubmit}
+                />
             </div>
         </div>
     );

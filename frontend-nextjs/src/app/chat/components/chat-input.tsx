@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Send, Check } from "lucide-react";
-import { useState, useRef, useEffect } from "react";
+import { useRef, useEffect } from "react";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -14,8 +14,11 @@ import { AiFillOpenAI } from "react-icons/ai";
 import { FcGoogle } from "react-icons/fc";
 import { RiRobot2Line } from "react-icons/ri";
 import { SiAnthropic, SiMeta } from "react-icons/si";
+import { useState } from "react";
 
 interface ChatInputProps {
+    value: string;
+    onValueChange: (value: string) => void;
     onSubmit: (message: string, provider: string) => void;
     disabled?: boolean;
 }
@@ -53,8 +56,12 @@ const AI_PROVIDERS = [
     },
 ];
 
-export function ChatInput({ onSubmit, disabled }: ChatInputProps) {
-    const [input, setInput] = useState("");
+export function ChatInput({
+    value,
+    onValueChange,
+    onSubmit,
+    disabled,
+}: ChatInputProps) {
     const [selectedProvider, setSelectedProvider] = useState(
         AI_PROVIDERS[0].id,
     );
@@ -66,14 +73,13 @@ export function ChatInput({ onSubmit, disabled }: ChatInputProps) {
             const newHeight = Math.min(textareaRef.current.scrollHeight, 200);
             textareaRef.current.style.height = `${newHeight}px`;
         }
-    }, [input]);
+    }, [value]);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!input.trim() || disabled) return;
+        if (!value.trim() || disabled) return;
 
-        onSubmit(input, selectedProvider);
-        setInput("");
+        onSubmit(value, selectedProvider);
     };
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -93,8 +99,8 @@ export function ChatInput({ onSubmit, disabled }: ChatInputProps) {
             <div className="relative bg-zinc-900/90 backdrop-blur-sm border border-zinc-800 rounded-3xl shadow-2xl overflow-hidden">
                 <Textarea
                     ref={textareaRef}
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
+                    value={value}
+                    onChange={(e) => onValueChange(e.target.value)}
                     onKeyDown={handleKeyDown}
                     placeholder="Type your message here..."
                     rows={1}
@@ -164,7 +170,7 @@ export function ChatInput({ onSubmit, disabled }: ChatInputProps) {
                     <Button
                         type="submit"
                         onClick={handleSubmit}
-                        disabled={disabled || !input.trim()}
+                        disabled={disabled || !value.trim()}
                         size="sm"
                         className="bg-white hover:bg-zinc-200 text-black font-medium rounded-xl h-9 w-9 p-0 disabled:opacity-50"
                     >
