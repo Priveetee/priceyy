@@ -1,9 +1,14 @@
 import { z } from "zod";
 import { router, publicProcedure } from "../trpc";
+import { chatRouter } from "./chat";
 
 const API_BASE_URL = process.env.INTERNAL_API_URL || "http://localhost:8083";
 
 export const appRouter = router({
+  // Chat AI routes
+  chat: chatRouter,
+
+  // Existing Go API routes
   getProviders: publicProcedure.query(async () => {
     const res = await fetch(`${API_BASE_URL}/providers`);
     if (!res.ok) throw new Error("Failed to fetch providers");

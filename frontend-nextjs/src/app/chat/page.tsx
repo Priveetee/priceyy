@@ -5,6 +5,8 @@ import { ChatHeader } from "./components/chat-header";
 import { ChatSidebar } from "./components/chat-sidebar";
 import { ChatMessages } from "./components/chat-messages";
 import { useState } from "react";
+import { trpc } from "@/lib/trpc/client";
+import { toast } from "sonner";
 
 interface Message {
   id: string;
@@ -20,11 +22,51 @@ export default function ChatPage() {
   const [currentThreadId, setCurrentThreadId] = useState<string>();
   const [isLoading, setIsLoading] = useState(false);
 
+  const sendMessage = trpc.chat.sendMessage.useMutation({
+    onSuccess: (data, variables) => {
+      let content = "";
+
+      if (typeof data.content === "string") {
+        content = data.content;
+      } else if (Array.isArray(data.content)) {
+        content = data.content
+          .map((item) => {
+            if (typeof item === "string") {
+              return item;
+            }
+            if ("type" in item && item.type === "text" && "text" in item) {
+              return item.text;
+            }
+            return "";
+          })
+          .filter(Boolean)
+          .join("\n");
+      }
+
+      const assistantMessage: Message = {
+        id: Date.now().toString(),
+        role: "assistant",
+        content,
+        timestamp: new Date(),
+        provider: variables.provider,
+      };
+      setMessages((prev) => [...prev, assistantMessage]);
+      setIsLoading(false);
+    },
+    onError: (error) => {
+      console.error("Chat error:", error);
+      toast.error("Failed to send message. Please try again.");
+      setIsLoading(false);
+    },
+  });
+
   const handlePromptClick = (prompt: string) => {
     setInput(prompt);
   };
 
   const handleSubmit = async (message: string, provider: string) => {
+    if (!message.trim() || isLoading) return;
+
     const userMessage: Message = {
       id: Date.now().toString(),
       role: "user",
@@ -37,72 +79,15 @@ export default function ChatPage() {
     setInput("");
     setIsLoading(true);
 
-    // Simulate AI response with rich markdown content
-    setTimeout(() => {
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: "assistant",
-        content: `# Cloud Pricing Comparison
+    const chatMessages = [...messages, userMessage].map((msg) => ({
+      role: msg.role as "user" | "assistant",
+      content: msg.content,
+    }));
 
-Hey! I'm here to help you with cloud pricing. Here's a quick comparison:
-
-## AWS vs Azure vs GCP
-
-| Provider | Compute Instance | Monthly Cost | Storage (1TB) |
-|----------|-----------------|--------------|---------------|
-| AWS      | t3.medium       | $30.37       | $23.00        |
-| Azure    | B2s             | $30.66       | $20.00        |
-| GCP      | e2-medium       | $24.27       | $20.00        |
-
-### Sample Code: Calculate Monthly Costs
-
-Here's a Python script to calculate your cloud costs:
-
-\`\`\`python
-def calculate_monthly_cost(instances, hours_per_month=730):
-    """
-    Calculate total monthly cost for cloud instances
-
-    Args:
-        instances: List of instance types with hourly rates
-        hours_per_month: Number of hours in a month (default: 730)
-
-    Returns:
-        Total monthly cost
-    """
-    total_cost = 0
-    for instance in instances:
-        hourly_rate = instance['rate']
-        quantity = instance['quantity']
-        total_cost += hourly_rate * quantity * hours_per_month
-
-    return round(total_cost, 2)
-
-# Example usage
-instances = [
-    {'name': 't3.medium', 'rate': 0.0416, 'quantity': 2},
-    {'name': 't3.large', 'rate': 0.0832, 'quantity': 1}
-]
-
-total = calculate_monthly_cost(instances)
-print(f"Total monthly cost: \${total}")
-\`\`\`
-
-### Key Features:
-
-- **Auto-scaling**: Automatically adjust resources based on demand
-- **Reserved Instances**: Save up to 72% with 1-3 year commitments
-- **Spot Instances**: Save up to 90% on unused capacity
-
-You can also use inline code like \`aws ec2 describe-instances\` for quick commands.
-
-**Need more details?** Just ask! 🚀`,
-        timestamp: new Date(),
-        provider,
-      };
-      setMessages((prev) => [...prev, assistantMessage]);
-      setIsLoading(false);
-    }, 1000);
+    sendMessage.mutate({
+      messages: chatMessages,
+      provider: provider as any,
+    });
   };
 
   const handleNewChat = () => {
