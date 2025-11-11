@@ -9,9 +9,10 @@ R.c("server/chunks/ssr/node_modules_next_dist_client_components_9774470f._.js")
 R.c("server/chunks/ssr/node_modules_next_dist_client_components_builtin_forbidden_45780354.js")
 R.c("server/chunks/ssr/node_modules_next_dist_client_components_builtin_unauthorized_15817684.js")
 R.c("server/chunks/ssr/node_modules_next_dist_client_components_builtin_global-error_ece394eb.js")
+R.c("server/chunks/ssr/src_app_chat_layout_tsx_3defd78b._.js")
 R.c("server/chunks/ssr/[root-of-the-server]__2cae9dcb._.js")
 R.c("server/chunks/ssr/_01ab9dcd._.js")
-R.c("server/chunks/ssr/_886149cd._.js")
+R.c("server/chunks/ssr/_ea137bd6._.js")
 R.m(35622)
-R.m(79181)
-module.exports=R.m(79181).exports
+R.m(58668)
+module.exports=R.m(58668).exports

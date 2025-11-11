@@ -64,3 +64,22 @@
         @apply bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent;
     }
 }
+
+body:has([data-chat-page]) .global-logo {
+    display: none;
+}
+
+html,
+body {
+    background-color: #0a0a0a;
+    color: #fafafa;
+}
+
+@layer base {
+    * {
+        @apply border-border;
+    }
+    body {
+        @apply bg-background text-foreground;
+    }
+}

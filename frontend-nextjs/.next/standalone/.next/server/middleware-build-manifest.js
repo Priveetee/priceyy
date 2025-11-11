@@ -18,11 +18,11 @@ globalThis.__BUILD_MANIFEST = {
   ],
   "lowPriorityFiles": [],
   "rootMainFiles": [
-    "static/chunks/2317b041bb4f3137.js",
+    "static/chunks/dff28550210e2f5e.js",
     "static/chunks/f53cc7ccfc79842f.js",
     "static/chunks/e229af6bf3426b3a.js",
     "static/chunks/cd2aba2ceecff706.js",
-    "static/chunks/turbopack-656df692b7368c8d.js"
+    "static/chunks/turbopack-d66101d3cff7ac75.js"
   ],
   "ampFirstPages": []
 };
