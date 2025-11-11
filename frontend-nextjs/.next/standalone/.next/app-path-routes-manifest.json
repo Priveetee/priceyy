@@ -5,6 +5,7 @@
   "/api/chat/route": "/api/chat",
   "/api/trpc/[trpc]/route": "/api/trpc/[trpc]",
   "/calculate/page": "/calculate",
+  "/chat/page": "/chat",
   "/checkout/page": "/checkout",
   "/favicon.ico/route": "/favicon.ico",
   "/results/page": "/results"

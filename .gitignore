@@ -48,6 +48,15 @@ dist/
 # Node build artifacts
 /frontend-nextjs/out/
 /frontend-nextjs/node_modules/
+**/.next/
+**/bun.lock
 
 # Test reports
 /coverage
+
+# NPM
+node_modules/
+
+# IDE Specific
+*.sublime-project
+*.sublime-workspace

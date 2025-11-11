@@ -5,6 +5,7 @@
   "/api/chat/route": "app/api/chat/route.js",
   "/api/trpc/[trpc]/route": "app/api/trpc/[trpc]/route.js",
   "/calculate/page": "app/calculate/page.js",
+  "/chat/page": "app/chat/page.js",
   "/checkout/page": "app/checkout/page.js",
   "/favicon.ico/route": "app/favicon.ico/route.js",
   "/results/page": "app/results/page.js"
