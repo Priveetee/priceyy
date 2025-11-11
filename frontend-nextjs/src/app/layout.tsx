@@ -11,30 +11,30 @@ import { usePathname } from "next/navigation";
 const inter = Inter({ subsets: ["latin"] });
 
 export default function RootLayout({
-    children,
+  children,
 }: Readonly<{
-    children: React.ReactNode;
+  children: React.ReactNode;
 }>) {
-    const pathname = usePathname();
-    const showLogo = pathname !== "/chat";
+  const pathname = usePathname();
+  const showLogo = pathname !== "/chat";
 
-    return (
-        <html lang="en" suppressHydrationWarning>
-            <body className={inter.className} suppressHydrationWarning>
-                <TRPCProvider>
-                    {showLogo && (
-                        <Link
-                            href="/"
-                            aria-label="Go to homepage"
-                            className="absolute top-4 left-4 md:top-6 md:left-6 z-50"
-                        >
-                            <SiBruno className="h-8 w-8 text-zinc-300 transition-colors hover:text-white" />
-                        </Link>
-                    )}
-                    {children}
-                    <Toaster richColors />
-                </TRPCProvider>
-            </body>
-        </html>
-    );
+  return (
+    <html lang="en" suppressHydrationWarning>
+      <body className={inter.className} suppressHydrationWarning>
+        <TRPCProvider>
+          {showLogo && (
+            <Link
+              href="/"
+              aria-label="Go to homepage"
+              className="absolute top-4 left-4 md:top-6 md:left-6 z-50"
+            >
+              <SiBruno className="h-8 w-8 text-zinc-300 transition-colors hover:text-white" />
+            </Link>
+          )}
+          {children}
+          <Toaster richColors position="top-right" />
+        </TRPCProvider>
+      </body>
+    </html>
+  );
 }

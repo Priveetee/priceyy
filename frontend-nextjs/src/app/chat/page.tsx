@@ -37,13 +37,66 @@ export default function ChatPage() {
     setInput("");
     setIsLoading(true);
 
-    // TODO: Call your AI API here
-    // Simulate AI response
+    // Simulate AI response with rich markdown content
     setTimeout(() => {
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: `Hey! I'm doing great, thanks for asking. How about you?\n\nI'm here to help you with cloud pricing calculations. You can ask me questions like:\n\n- Compare AWS and Azure pricing for compute instances\n- What's the cost of running a Kubernetes cluster?\n- Help me optimize my cloud costs\n\nWhat would you like to know?`,
+        content: `# Cloud Pricing Comparison
+
+Hey! I'm here to help you with cloud pricing. Here's a quick comparison:
+
+## AWS vs Azure vs GCP
+
+| Provider | Compute Instance | Monthly Cost | Storage (1TB) |
+|----------|-----------------|--------------|---------------|
+| AWS      | t3.medium       | $30.37       | $23.00        |
+| Azure    | B2s             | $30.66       | $20.00        |
+| GCP      | e2-medium       | $24.27       | $20.00        |
+
+### Sample Code: Calculate Monthly Costs
+
+Here's a Python script to calculate your cloud costs:
+
+\`\`\`python
+def calculate_monthly_cost(instances, hours_per_month=730):
+    """
+    Calculate total monthly cost for cloud instances
+
+    Args:
+        instances: List of instance types with hourly rates
+        hours_per_month: Number of hours in a month (default: 730)
+
+    Returns:
+        Total monthly cost
+    """
+    total_cost = 0
+    for instance in instances:
+        hourly_rate = instance['rate']
+        quantity = instance['quantity']
+        total_cost += hourly_rate * quantity * hours_per_month
+
+    return round(total_cost, 2)
+
+# Example usage
+instances = [
+    {'name': 't3.medium', 'rate': 0.0416, 'quantity': 2},
+    {'name': 't3.large', 'rate': 0.0832, 'quantity': 1}
+]
+
+total = calculate_monthly_cost(instances)
+print(f"Total monthly cost: \${total}")
+\`\`\`
+
+### Key Features:
+
+- **Auto-scaling**: Automatically adjust resources based on demand
+- **Reserved Instances**: Save up to 72% with 1-3 year commitments
+- **Spot Instances**: Save up to 90% on unused capacity
+
+You can also use inline code like \`aws ec2 describe-instances\` for quick commands.
+
+**Need more details?** Just ask! 🚀`,
         timestamp: new Date(),
         provider,
       };
@@ -60,7 +113,6 @@ export default function ChatPage() {
 
   const handleSelectThread = (threadId: string) => {
     setCurrentThreadId(threadId);
-    // TODO: Load messages for this thread
     console.log("Selected thread:", threadId);
   };
 

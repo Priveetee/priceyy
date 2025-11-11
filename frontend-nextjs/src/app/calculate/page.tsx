@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import Silk from "@/components/silk";
 import AddResourceButton from "@/components/add-resource-button";
 import ResourceCard from "@/components/resource-card";
@@ -31,7 +31,6 @@ import {
 import { Spinner } from "@/components/ui/spinner";
 import { useHydration } from "@/lib/use-hydration";
 import { ResourceSearchInput } from "@/components/resource-search-input";
-import { AiAssistant } from "@/components/ai-assistant";
 
 export default function CalculatePage() {
   const { items: cartItems, addToCart, clearCart } = useCartStore();
@@ -163,7 +162,6 @@ export default function CalculatePage() {
           )}
         </motion.div>
       </div>
-      <AiAssistant />
     </div>
   );
 }
