@@ -50,6 +50,7 @@ dist/
 /frontend-nextjs/node_modules/
 **/.next/
 **/bun.lock
+frontend-nextjs/.next/
 
 # Test reports
 /coverage
