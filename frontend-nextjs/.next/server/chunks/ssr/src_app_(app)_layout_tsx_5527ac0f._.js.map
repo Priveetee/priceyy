@@ -1,1 +1,0 @@
-{"version":3,"sources":["turbopack:///[project]/src/app/(app)/layout.tsx"],"sourcesContent":["export default function AppLayout({ children }: { children: React.ReactNode }) {\n  return <main>{children}</main>;\n}\n"],"names":[],"mappings":"8EAAe,SAAS,EAAU,UAAE,CAAQ,CAAiC,EAC3E,MAAO,CAAA,EAAA,EAAA,GAAA,EAAC,OAAA,UAAM,GAChB"}
