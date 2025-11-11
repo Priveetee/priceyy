@@ -33,7 +33,7 @@ export default function ChatPage() {
     };
 
     return (
-        <div className="flex h-screen w-full bg-zinc-950" data-chat-page>
+        <div className="flex h-screen w-full bg-zinc-950">
             <ChatSidebar
                 onNewChat={handleNewChat}
                 onSelectThread={handleSelectThread}
