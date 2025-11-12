@@ -14,13 +14,14 @@ import { AiFillOpenAI } from "react-icons/ai";
 import { FcGoogle } from "react-icons/fc";
 import { RiRobot2Line } from "react-icons/ri";
 import { SiAnthropic, SiMeta } from "react-icons/si";
-import { useState } from "react";
 
 interface ChatInputProps {
   value: string;
   onValueChange: (value: string) => void;
   onSubmit: (message: string, provider: string) => void;
   disabled?: boolean;
+  selectedProvider: string;
+  onProviderChange: (provider: string) => void;
 }
 
 const AI_PROVIDERS = [
@@ -61,8 +62,9 @@ export function ChatInput({
   onValueChange,
   onSubmit,
   disabled,
+  selectedProvider,
+  onProviderChange,
 }: ChatInputProps) {
-  const [selectedProvider, setSelectedProvider] = useState(AI_PROVIDERS[0].id);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -100,7 +102,9 @@ export function ChatInput({
           value={value}
           onChange={(e) => onValueChange(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Type your message here..."
+          placeholder={
+            disabled ? "AI is typing..." : "Type your message here..."
+          }
           rows={1}
           className="min-h-[52px] max-h-[200px] resize-none border-0 bg-transparent text-white placeholder:text-zinc-500 focus-visible:ring-0 px-6 py-4 text-base leading-6"
           disabled={disabled}
@@ -108,7 +112,10 @@ export function ChatInput({
 
         <div className="flex items-center justify-between px-4 pb-3 pt-1">
           <DropdownMenu>
-            <DropdownMenuTrigger className="flex items-center gap-2 bg-transparent hover:bg-zinc-800/50 text-zinc-300 text-sm rounded-lg px-3 py-2 transition-colors outline-none">
+            <DropdownMenuTrigger
+              disabled={disabled}
+              className="flex items-center gap-2 bg-transparent hover:bg-zinc-800/50 text-zinc-300 text-sm rounded-lg px-3 py-2 transition-colors outline-none disabled:opacity-50"
+            >
               <SelectedIcon className="h-5 w-5" />
               <span className="font-medium">{selectedProviderData?.name}</span>
               <svg
@@ -135,7 +142,7 @@ export function ChatInput({
                 return (
                   <DropdownMenuItem
                     key={provider.id}
-                    onClick={() => setSelectedProvider(provider.id)}
+                    onClick={() => onProviderChange(provider.id)}
                     className="flex items-center gap-3 px-3 py-3 rounded-xl cursor-pointer focus:bg-zinc-800 focus:text-white data-[highlighted]:bg-zinc-800 data-[highlighted]:text-white transition-colors"
                   >
                     <div className="flex items-center gap-3 flex-1">

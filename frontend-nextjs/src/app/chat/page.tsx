@@ -4,7 +4,8 @@ import { ChatInput } from "./components/chat-input";
 import { ChatHeader } from "./components/chat-header";
 import { ChatSidebar } from "./components/chat-sidebar";
 import { ChatMessages } from "./components/chat-messages";
-import { useState } from "react";
+import { TypingIndicator } from "./components/typing-indicator";
+import { useState, useEffect } from "react";
 import { trpc } from "@/lib/trpc/client";
 import { toast } from "sonner";
 
@@ -16,41 +17,95 @@ interface Message {
   provider?: string;
 }
 
+interface ChatThread {
+  id: string;
+  title: string;
+  timestamp: Date;
+  messages: Message[];
+}
+
+const THREADS_STORAGE_KEY = "priceyy-chat-threads";
+const CURRENT_THREAD_KEY = "priceyy-current-thread";
+
 export default function ChatPage() {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [currentThreadId, setCurrentThreadId] = useState<string>();
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedProvider, setSelectedProvider] = useState("openai");
+
+  useEffect(() => {
+    const storedThreadId = localStorage.getItem(CURRENT_THREAD_KEY);
+    if (storedThreadId) {
+      setCurrentThreadId(storedThreadId);
+      loadThreadMessages(storedThreadId);
+    }
+  }, []);
+
+  const loadThreadMessages = (threadId: string) => {
+    const threadsData = localStorage.getItem(THREADS_STORAGE_KEY);
+    if (threadsData) {
+      try {
+        const threads: ChatThread[] = JSON.parse(threadsData);
+        const thread = threads.find((t) => t.id === threadId);
+        if (thread) {
+          const messagesWithDates = thread.messages.map((msg) => ({
+            ...msg,
+            timestamp: new Date(msg.timestamp),
+          }));
+          setMessages(messagesWithDates);
+        }
+      } catch (error) {
+        console.error("Failed to load thread messages:", error);
+      }
+    }
+  };
+
+  const saveThread = (threadId: string, newMessages: Message[]) => {
+    const threadsData = localStorage.getItem(THREADS_STORAGE_KEY);
+    let threads: ChatThread[] = threadsData ? JSON.parse(threadsData) : [];
+
+    const existingThreadIndex = threads.findIndex((t) => t.id === threadId);
+
+    const firstUserMessage = newMessages.find((m) => m.role === "user");
+    const title = firstUserMessage
+      ? firstUserMessage.content.slice(0, 50) +
+        (firstUserMessage.content.length > 50 ? "..." : "")
+      : "New conversation";
+
+    const threadData: ChatThread = {
+      id: threadId,
+      title,
+      timestamp: new Date(),
+      messages: newMessages,
+    };
+
+    if (existingThreadIndex >= 0) {
+      threads[existingThreadIndex] = threadData;
+    } else {
+      threads.unshift(threadData);
+    }
+
+    localStorage.setItem(THREADS_STORAGE_KEY, JSON.stringify(threads));
+  };
 
   const sendMessage = trpc.chat.sendMessage.useMutation({
     onSuccess: (data, variables) => {
-      let content = "";
-
-      if (typeof data.content === "string") {
-        content = data.content;
-      } else if (Array.isArray(data.content)) {
-        content = data.content
-          .map((item) => {
-            if (typeof item === "string") {
-              return item;
-            }
-            if ("type" in item && item.type === "text" && "text" in item) {
-              return item.text;
-            }
-            return "";
-          })
-          .filter(Boolean)
-          .join("\n");
-      }
-
       const assistantMessage: Message = {
         id: Date.now().toString(),
         role: "assistant",
-        content,
+        content: data.content,
         timestamp: new Date(),
-        provider: variables.provider,
+        provider: data.provider || variables.provider,
       };
-      setMessages((prev) => [...prev, assistantMessage]);
+
+      const updatedMessages = [...messages, assistantMessage];
+      setMessages(updatedMessages);
+
+      if (currentThreadId) {
+        saveThread(currentThreadId, updatedMessages);
+      }
+
       setIsLoading(false);
     },
     onError: (error) => {
@@ -75,11 +130,21 @@ export default function ChatPage() {
       provider,
     };
 
-    setMessages((prev) => [...prev, userMessage]);
+    let threadId = currentThreadId;
+    if (!threadId) {
+      threadId = `thread-${Date.now()}`;
+      setCurrentThreadId(threadId);
+      localStorage.setItem(CURRENT_THREAD_KEY, threadId);
+    }
+
+    const updatedMessages = [...messages, userMessage];
+    setMessages(updatedMessages);
     setInput("");
     setIsLoading(true);
 
-    const chatMessages = [...messages, userMessage].map((msg) => ({
+    saveThread(threadId, updatedMessages);
+
+    const chatMessages = updatedMessages.map((msg) => ({
       role: msg.role as "user" | "assistant",
       content: msg.content,
     }));
@@ -94,11 +159,26 @@ export default function ChatPage() {
     setMessages([]);
     setInput("");
     setCurrentThreadId(undefined);
+    localStorage.removeItem(CURRENT_THREAD_KEY);
   };
 
   const handleSelectThread = (threadId: string) => {
     setCurrentThreadId(threadId);
-    console.log("Selected thread:", threadId);
+    localStorage.setItem(CURRENT_THREAD_KEY, threadId);
+    loadThreadMessages(threadId);
+  };
+
+  const handleDeleteThread = (threadId: string) => {
+    const threadsData = localStorage.getItem(THREADS_STORAGE_KEY);
+    if (threadsData) {
+      const threads: ChatThread[] = JSON.parse(threadsData);
+      const updatedThreads = threads.filter((t) => t.id !== threadId);
+      localStorage.setItem(THREADS_STORAGE_KEY, JSON.stringify(updatedThreads));
+
+      if (currentThreadId === threadId) {
+        handleNewChat();
+      }
+    }
   };
 
   return (
@@ -106,6 +186,7 @@ export default function ChatPage() {
       <ChatSidebar
         onNewChat={handleNewChat}
         onSelectThread={handleSelectThread}
+        onDeleteThread={handleDeleteThread}
         currentThreadId={currentThreadId}
       />
 
@@ -115,7 +196,14 @@ export default function ChatPage() {
             <ChatHeader onPromptClick={handlePromptClick} />
           </div>
         ) : (
-          <ChatMessages messages={messages} />
+          <div className="flex-1 overflow-y-auto">
+            <ChatMessages messages={messages} />
+            {isLoading && (
+              <div className="max-w-4xl mx-auto px-6">
+                <TypingIndicator provider={selectedProvider as any} />
+              </div>
+            )}
+          </div>
         )}
 
         <div className="p-6">
@@ -124,6 +212,8 @@ export default function ChatPage() {
             onValueChange={setInput}
             onSubmit={handleSubmit}
             disabled={isLoading}
+            selectedProvider={selectedProvider}
+            onProviderChange={setSelectedProvider}
           />
         </div>
       </div>

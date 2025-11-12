@@ -11,7 +11,7 @@ const PROVIDER_MODELS = {
   anthropic: "anthropic/claude-haiku-4.5",
   google: "google/gemma-3-27b-it:free",
   meta: "meta-llama/llama-4-maverick:free",
-  mistral: "mistralai/mistral-small-3.2-24b-instruct:free",
+  mistral: "mistralai/mistral-small-3.1-24b-instruct:free",
 } as const;
 
 const SYSTEM_PROMPT = `You are a helpful cloud pricing assistant for Priceyy, an intelligent cloud cost comparison platform.
@@ -54,18 +54,22 @@ export const chatRouter = router({
           ],
           maxTokens: 4096,
           temperature: 0.7,
+          stream: true,
         });
 
-        // Handle non-streaming response
-        if ("choices" in result && result.choices[0]?.message) {
-          return {
-            content: result.choices[0].message.content || "",
-            model: result.model,
-            usage: result.usage,
-          };
+        let fullContent = "";
+
+        for await (const chunk of result as any) {
+          if (chunk.choices?.[0]?.delta?.content) {
+            fullContent += chunk.choices[0].delta.content;
+          }
         }
 
-        throw new Error("Unexpected response format");
+        return {
+          content: fullContent,
+          model: model,
+          provider: provider,
+        };
       } catch (error: any) {
         console.error("OpenRouter API error:", error);
         throw new Error(

@@ -2,7 +2,8 @@ import { z } from "zod";
 import { router, publicProcedure } from "../trpc";
 import { chatRouter } from "./chat";
 
-const API_BASE_URL = process.env.INTERNAL_API_URL || "http://localhost:8083";
+const API_BASE_URL =
+  process.env.INTERNAL_API_URL || "https://priceyy.eltux.fr/";
 
 export const appRouter = router({
   // Chat AI routes
