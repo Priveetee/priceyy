@@ -46,7 +46,6 @@ export const chatRouter = router({
       const modelsToTry = [...FREE_MODELS[provider], ...FREE_MODELS.fallback];
 
       let lastError: any = null;
-      let usedModel: string | null = null;
       let isFallback = false;
       let attemptCount = 0;
 
@@ -115,44 +114,57 @@ export const chatRouter = router({
               fullContent += chunk.choices[0].delta.content;
             }
 
-            if (chunk.choices?.[0]?.delta?.tool_calls) {
-              const deltaToolCalls = chunk.choices[0].delta.tool_calls;
+            if (chunk.choices?.[0]?.delta?.toolCalls) {
+              const deltaToolCalls = chunk.choices[0].delta.toolCalls;
 
               for (const deltaCall of deltaToolCalls) {
                 if (deltaCall.index !== undefined) {
-                  if (!toolCalls[deltaCall.index]) {
-                    toolCalls[deltaCall.index] = {
-                      id:
-                        deltaCall.id || `call_${Date.now()}_${deltaCall.index}`,
+                  const idx = deltaCall.index;
+
+                  if (!toolCalls[idx]) {
+                    toolCalls[idx] = {
+                      id: deltaCall.id || `call_${Date.now()}_${idx}`,
                       type: "function",
                       function: {
-                        name: deltaCall.function?.name || "",
-                        arguments: deltaCall.function?.arguments || "",
+                        name: "",
+                        arguments: "",
                       },
                     };
-                  } else {
-                    if (deltaCall.function?.name) {
-                      toolCalls[deltaCall.index].function.name +=
-                        deltaCall.function.name;
-                    }
-                    if (deltaCall.function?.arguments) {
-                      toolCalls[deltaCall.index].function.arguments +=
-                        deltaCall.function.arguments;
-                    }
+                  }
+
+                  if (deltaCall.id) {
+                    toolCalls[idx].id = deltaCall.id;
+                  }
+
+                  if (deltaCall.type) {
+                    toolCalls[idx].type = deltaCall.type;
+                  }
+
+                  if (deltaCall.function?.name) {
+                    toolCalls[idx].function.name += deltaCall.function.name;
+                  }
+
+                  if (deltaCall.function?.arguments) {
+                    toolCalls[idx].function.arguments +=
+                      deltaCall.function.arguments;
                   }
                 }
               }
             }
           }
 
-          usedModel = model;
+          const validToolCalls = toolCalls.filter((tc) => {
+            return (
+              tc &&
+              tc.function &&
+              tc.function.name &&
+              tc.function.name.length > 0
+            );
+          });
 
           return {
             content: fullContent,
-            toolCalls: toolCalls.filter(
-              (tc) =>
-                tc && tc.function && tc.function.name && tc.function.arguments,
-            ),
+            toolCalls: validToolCalls,
             model: model,
             modelDisplayName: MODEL_DISPLAY_NAMES[model] || model,
             provider: provider,

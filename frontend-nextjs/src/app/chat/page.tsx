@@ -10,6 +10,7 @@ import { useState, useEffect } from "react";
 import { trpc } from "@/lib/trpc/client";
 import { toast } from "sonner";
 import { useToolExecutor } from "./hooks/use-tool-executor";
+import { parseToolCallsFromContent } from "@/lib/parse-tool-calls";
 
 interface Message {
   id: string;
@@ -143,23 +144,31 @@ export default function ChatPage() {
         setIsFallbackActive(false);
       }
 
-      if (result.toolCalls && result.toolCalls.length > 0) {
+      const parsed = parseToolCallsFromContent(result.content || "");
+      const detectedToolCalls = parsed.hasToolCalls
+        ? parsed.toolCalls
+        : result.toolCalls;
+      const cleanContent = parsed.hasToolCalls
+        ? parsed.cleanContent
+        : result.content;
+
+      if (detectedToolCalls && detectedToolCalls.length > 0) {
         setIsTyping(false);
 
         const assistantMessageWithTools: Message = {
           id: `${Date.now()}-assistant`,
           role: "assistant",
-          content: result.content || "",
+          content: cleanContent || "",
           timestamp: new Date(),
           provider: result.originalProvider || selectedProvider,
-          tool_calls: result.toolCalls,
+          tool_calls: detectedToolCalls,
           isFallback: result.isFallback,
           modelDisplayName: result.modelDisplayName,
         };
 
         conversationMessages.push(assistantMessageWithTools);
 
-        for (const toolCall of result.toolCalls) {
+        for (const toolCall of detectedToolCalls) {
           setCurrentToolCall({
             toolName: toolCall.function.name,
             args: JSON.parse(toolCall.function.arguments),
@@ -191,7 +200,7 @@ export default function ChatPage() {
         const assistantMessage: Message = {
           id: `${Date.now()}-assistant`,
           role: "assistant",
-          content: result.content,
+          content: cleanContent || result.content,
           timestamp: new Date(),
           provider: result.originalProvider || selectedProvider,
           isFallback: result.isFallback,
