@@ -6,10 +6,8 @@ const API_BASE_URL =
   process.env.INTERNAL_API_URL || "https://priceyy.eltux.fr/";
 
 export const appRouter = router({
-  // Chat AI routes
   chat: chatRouter,
 
-  // Existing Go API routes
   getProviders: publicProcedure.query(async () => {
     const res = await fetch(`${API_BASE_URL}/providers`);
     if (!res.ok) throw new Error("Failed to fetch providers");

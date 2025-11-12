@@ -1,29 +1,30 @@
 import { z } from "zod";
 import { publicProcedure, router } from "../trpc";
 import { OpenRouter } from "@openrouter/sdk";
+import { AI_TOOLS_SCHEMA } from "@/lib/ai-tools-schema";
+import { FREE_MODELS, MODEL_DISPLAY_NAMES } from "@/lib/ai-models-config";
 
 const openRouter = new OpenRouter({
   apiKey: process.env.OPENROUTER_API_KEY ?? "",
 });
 
-const PROVIDER_MODELS = {
-  openai: "openai/gpt-oss-20b:free",
-  anthropic: "anthropic/claude-haiku-4.5",
-  google: "google/gemma-3-27b-it:free",
-  meta: "meta-llama/llama-4-maverick:free",
-  mistral: "mistralai/mistral-small-3.1-24b-instruct:free",
-} as const;
-
 const SYSTEM_PROMPT = `You are a helpful cloud pricing assistant for Priceyy, an intelligent cloud cost comparison platform.
 
 Your responsibilities:
 - Help users understand and compare cloud costs across AWS, Azure, and GCP
+- Guide users through resource selection using available tools
 - Provide accurate pricing estimates and cost optimization recommendations
-- Explain resource configurations and their cost implications
-- Use tables to compare pricing when relevant
-- Format all code examples with proper markdown syntax highlighting
+- Use tools to search for resources, get pricing options, and add items to cart
+- ALWAYS confirm with the user before adding items to their cart
+- When user asks about resources, use search_resources tool to find available options
+- Present pricing information clearly with tables when comparing options
 
-Always be concise, accurate, and helpful. When discussing pricing, mention that costs may vary by region and usage patterns.`;
+Important guidelines:
+- Ask clarifying questions if provider, region, or resource type is not specified
+- Use tools in sequence: get_providers -> get_regions -> search_resources -> get_pricing_options -> add_to_cart
+- Never add to cart without explicit user confirmation
+- Format code examples with proper markdown syntax highlighting
+- Mention that costs may vary by region and usage patterns`;
 
 export const chatRouter = router({
   sendMessage: publicProcedure
@@ -31,8 +32,10 @@ export const chatRouter = router({
       z.object({
         messages: z.array(
           z.object({
-            role: z.enum(["user", "assistant", "system"]),
+            role: z.enum(["user", "assistant", "system", "tool"]),
             content: z.string(),
+            tool_call_id: z.string().optional(),
+            tool_calls: z.array(z.any()).optional(),
           }),
         ),
         provider: z.enum(["openai", "anthropic", "google", "mistral", "meta"]),
@@ -40,42 +43,132 @@ export const chatRouter = router({
     )
     .mutation(async ({ input }) => {
       const { messages, provider } = input;
-      const model = PROVIDER_MODELS[provider];
+      const modelsToTry = [...FREE_MODELS[provider], ...FREE_MODELS.fallback];
 
-      try {
-        const result = await openRouter.chat.send({
-          model,
-          messages: [
-            {
-              role: "system",
-              content: SYSTEM_PROMPT,
-            },
-            ...messages,
-          ],
-          maxTokens: 4096,
-          temperature: 0.7,
-          stream: true,
-        });
+      let lastError: any = null;
+      let usedModel: string | null = null;
+      let isFallback = false;
+      let attemptCount = 0;
 
-        let fullContent = "";
+      const formattedMessages = messages.map((msg) => {
+        if (msg.role === "tool") {
+          return {
+            role: "tool" as const,
+            content: msg.content,
+            toolCallId: msg.tool_call_id!,
+          };
+        } else if (msg.role === "assistant" && msg.tool_calls) {
+          return {
+            role: "assistant" as const,
+            content: msg.content || null,
+            toolCalls: msg.tool_calls,
+          };
+        } else if (msg.role === "assistant") {
+          return {
+            role: "assistant" as const,
+            content: msg.content,
+          };
+        } else if (msg.role === "user") {
+          return {
+            role: "user" as const,
+            content: msg.content,
+          };
+        } else {
+          return {
+            role: "system" as const,
+            content: msg.content,
+          };
+        }
+      });
 
-        for await (const chunk of result as any) {
-          if (chunk.choices?.[0]?.delta?.content) {
-            fullContent += chunk.choices[0].delta.content;
-          }
+      const primaryModelsCount = FREE_MODELS[provider].length;
+
+      for (let i = 0; i < modelsToTry.length; i++) {
+        const model = modelsToTry[i];
+        attemptCount++;
+
+        if (i >= primaryModelsCount) {
+          isFallback = true;
         }
 
-        return {
-          content: fullContent,
-          model: model,
-          provider: provider,
-        };
-      } catch (error: any) {
-        console.error("OpenRouter API error:", error);
-        throw new Error(
-          error?.message || "Failed to get response from AI model",
-        );
+        try {
+          const result = await openRouter.chat.send({
+            model,
+            messages: [
+              {
+                role: "system",
+                content: SYSTEM_PROMPT,
+              },
+              ...formattedMessages,
+            ],
+            tools: AI_TOOLS_SCHEMA as any,
+            maxTokens: 4096,
+            temperature: 0.7,
+            stream: true,
+          });
+
+          let fullContent = "";
+          const toolCalls: any[] = [];
+
+          for await (const chunk of result as any) {
+            if (chunk.choices?.[0]?.delta?.content) {
+              fullContent += chunk.choices[0].delta.content;
+            }
+
+            if (chunk.choices?.[0]?.delta?.tool_calls) {
+              const deltaToolCalls = chunk.choices[0].delta.tool_calls;
+
+              for (const deltaCall of deltaToolCalls) {
+                if (deltaCall.index !== undefined) {
+                  if (!toolCalls[deltaCall.index]) {
+                    toolCalls[deltaCall.index] = {
+                      id:
+                        deltaCall.id || `call_${Date.now()}_${deltaCall.index}`,
+                      type: "function",
+                      function: {
+                        name: deltaCall.function?.name || "",
+                        arguments: deltaCall.function?.arguments || "",
+                      },
+                    };
+                  } else {
+                    if (deltaCall.function?.name) {
+                      toolCalls[deltaCall.index].function.name +=
+                        deltaCall.function.name;
+                    }
+                    if (deltaCall.function?.arguments) {
+                      toolCalls[deltaCall.index].function.arguments +=
+                        deltaCall.function.arguments;
+                    }
+                  }
+                }
+              }
+            }
+          }
+
+          usedModel = model;
+
+          return {
+            content: fullContent,
+            toolCalls: toolCalls.filter(
+              (tc) =>
+                tc && tc.function && tc.function.name && tc.function.arguments,
+            ),
+            model: model,
+            modelDisplayName: MODEL_DISPLAY_NAMES[model] || model,
+            provider: provider,
+            isFallback,
+            originalProvider: provider,
+          };
+        } catch (error: any) {
+          lastError = error;
+          continue;
+        }
       }
+
+      throw new Error(
+        lastError?.message ||
+          "All models are currently unavailable. Please try again later.",
+      );
     }),
 
   getAvailableModels: publicProcedure.query(async () => {

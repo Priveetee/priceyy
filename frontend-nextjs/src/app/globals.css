@@ -69,3 +69,19 @@ body {
         @apply bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent;
     }
 }
+
+@keyframes search-pulse {
+    0%,
+    100% {
+        transform: rotate(0deg) scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: rotate(180deg) scale(1.05);
+        opacity: 0.9;
+    }
+}
+
+.animate-search {
+    animation: search-pulse 1.2s ease-in-out infinite;
+}
