@@ -12,10 +12,14 @@ import { motion, AnimatePresence } from "framer-motion";
 
 interface Message {
   id: string;
-  role: "user" | "assistant";
+  role: "user" | "assistant" | "tool";
   content: string;
   timestamp: Date;
   provider?: string;
+  tool_call_id?: string;
+  tool_calls?: any[];
+  isFallback?: boolean;
+  modelDisplayName?: string;
 }
 
 interface ChatThread {
